@@ -22,10 +22,14 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 
 (* ================ Part A ================ *) 
 
-let PartA input = 
+let PartA (input : string[]) =
     input
-    
+    |> Array.map int
+    |> Array.fold (fun f d -> f + d) 0
+
+
 (* ================ Part B ================ *)
+
 
 let PartB resultA input = 
     "resultB"

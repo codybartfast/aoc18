@@ -25,6 +25,7 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 let PartA input = 
     input
     
+
 (* ================ Part B ================ *)
 
 let PartB resultA input = 
