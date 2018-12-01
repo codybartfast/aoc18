@@ -25,11 +25,41 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 let PartA (input : string[]) =
     input
     |> Array.map int
-    |> Array.fold (fun f d -> f + d) 0
+    |> Array.fold (+) 0
 
 
 (* ================ Part B ================ *)
 
+let rec repeat item = seq{ yield item; yield! repeat item }
 
-let PartB resultA input = 
-    "resultB"
+let applyDelta freq =
+    let mutable freq = freq
+    (fun delta -> 
+        freq <- freq + delta
+        freq)
+
+let isDuplicate () =
+    let mutable set = Set.empty
+    (fun item ->
+        let isDup = set.Contains item
+        set <- set.Add item
+        (item, isDup))
+
+let PartB resultA (input : string[]) = 
+ 
+    let repeatedDeltas =
+        input
+        |> Array.map int    
+        |> repeat
+        |> Seq.collect id
+    
+    let values =
+        repeatedDeltas
+        |> Seq.map (applyDelta 0)
+
+    values
+    |> Seq.map (isDuplicate ())
+    |> Seq.find (fun (_, isDup) -> isDup)
+    |> fst
+
+    //values |> Seq.item 997
