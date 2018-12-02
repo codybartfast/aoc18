@@ -42,7 +42,7 @@ let trippleCount line =
     |> Seq.countBy id
     |> Seq.map snd
     |> Seq.contains 3
-   
+
 let Part1 input = 
     let lines = input |> lines
     (lines 
@@ -52,10 +52,27 @@ let Part1 input =
     |> Seq.map trippleCount
     |> filterCount id)
 
-
-
 (* ================ Part B ================ *)
 
+let hasOneDiff (id1, id2) = 
+    (toChars id1, toChars id2)
+    ||> Seq.map2 (fun c1 c2 -> c1 <> c2)
+    |> filterCount id
+    |> (function | 1 -> Some (id1, id2) | _ -> None)
+
+let rec allPairs list = 
+    match list with
+    | [] -> []
+    | _::[] -> []
+    | head::tail -> 
+        List.map (fun x -> (head, x)) tail
+        @ allPairs tail
+    
+
 let Part2 result1 input = 
-    "result2"
-     
+    input
+    |> lines
+    |> allPairs
+    |> List.choose hasOneDiff
+
+    
