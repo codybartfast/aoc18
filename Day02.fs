@@ -7,6 +7,7 @@ module Day02
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open System.Runtime.InteropServices
 
 let lines (text:string) = 
     text.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) 
@@ -28,11 +29,33 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
+let doubleCount line = 
+    line
+    |> toChars
+    |> Seq.countBy id
+    |> Seq.map snd
+    |> Seq.contains 2
+
+let trippleCount line = 
+    line
+    |> toChars
+    |> Seq.countBy id
+    |> Seq.map snd
+    |> Seq.contains 3
+   
 let Part1 input = 
-    input |> lines
-    
+    let lines = input |> lines
+    (lines 
+    |> Seq.map doubleCount
+    |> filterCount id) *
+    (lines 
+    |> Seq.map trippleCount
+    |> filterCount id)
+
+
 
 (* ================ Part B ================ *)
 
 let Part2 result1 input = 
     "result2"
+     
