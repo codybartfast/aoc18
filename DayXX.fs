@@ -1,4 +1,6 @@
-﻿module DayXX
+﻿(* a.cbf.pub:1984/tx/___________________________________________/data.html *)
+
+module DayXX
 
 #nowarn "0025"
 
@@ -6,7 +8,10 @@ open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
 
-let print obj = (printfn "%O" obj); obj
+let lines (text:string) = 
+    text.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) 
+    |> List.ofSeq 
+let rec repeat item = seq{ yield item; yield! repeat item }
 let len (seq : seq<'a>) = Seq.length seq
 let toChars (str : string) = str.ToCharArray()
 let fromChars (chrs : char[]) = String(chrs)
@@ -19,14 +24,15 @@ let rxSplit pattern str = Regex.Split(str, pattern)
 let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
 let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
 let filterCount predicate = Seq.filter predicate >> Seq.length
+let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let PartA input = 
-    input
+let Part1 input = 
+    input |> lines
     
 
 (* ================ Part B ================ *)
 
-let PartB resultA input = 
-    "resultB"
+let Part2 result1 input = 
+    "result2"

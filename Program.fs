@@ -10,30 +10,28 @@ let showTime () =
 
 let getInputFile name =
     Path.Combine(__SOURCE_DIRECTORY__, "inputs", name) + ".txt"
-let readLines name = File.ReadAllLines(getInputFile name)
 let readText name = File.ReadAllText(getInputFile name)
 
 open Day01
 let name = "day01"
 
 let text = readText name
-let lines = readLines name
 
 [<EntryPoint>]
 let main argv =
 
-    let inputA = lines
+    let input1 = text
     
     sw.Start()
-    let resultA = PartA inputA
-    printfn "%O" resultA 
+    let result1 = Part1 input1
+    printfn "%O" result1 
     showTime ()
 
-    let inputB = inputA
+    let input2 = input1
 
     sw.Restart() 
-    let resultB = PartB resultA inputB
-    printfn "%O" resultB
+    let result2 = Part2 result1 input2
+    printfn "%O" result2
     showTime ()
 
     Console.ReadKey() |> ignore
