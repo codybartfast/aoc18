@@ -7,6 +7,7 @@ module Day03
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open Day02
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let rec repeat item = seq{ yield item; yield! repeat item }
@@ -37,7 +38,7 @@ let parseLine line =
 let enumCoords (id, (l, t), (w, h)) =
     seq{for x in l .. (l+(w-1)) do 
         for y in t .. (t+(h-1)) do
-        yield (x,y)
+        yield (id, (x,y))
     }
 
 let Part1 input = 
@@ -53,5 +54,34 @@ let Part1 input =
       
 (* ================ Part B ================ *)
 
+let lineOverlaps (s1, f1) (s2, f2) =
+    ((s1 >= s2 && s1 <= f2) || (s2 >= s1 && s2 <= f1))
+
+let overlaps (id1, (l1, t1), (w1, h1)) (id2, (l2, t2), (w2, h2)) =
+    lineOverlaps (l1, l1 + (w1 - 1)) (l2, l2 + (w2 - 1))
+    &&
+    lineOverlaps (t1, t1 + (h1 - 1)) (t2, t2 + (h2 - 1))
+
+    
+let claimOverlaps claims claim1 =
+    let over = 
+        claims
+        |> Seq.map (fun claim2 ->
+             (claim1, (claim1 <> claim2) && overlaps claim1 claim2))
+        |> Seq.map snd
+        |> Seq.exists id
+    (claim1, over)
+
+
+
 let Part2 result1 input = 
-    "day3 result2"
+    let claims = 
+        input |> toLines
+        |> List.map parseLine
+    claims
+    |> Seq.map (fun claim -> claimOverlaps claims claim)
+    //|> Seq.countBy (fun (_, over) -> over)
+    //|> List.ofSeq
+    |> Seq.filter (fun (_, over) -> not over)
+    |> Seq.exactlyOne
+    
