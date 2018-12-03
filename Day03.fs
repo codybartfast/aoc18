@@ -1,6 +1,6 @@
 ﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
 
-module DayXX
+module Day03
 
 // #nowarn "0025"
 
@@ -33,4 +33,4 @@ let Part1 input =
 (* ================ Part B ================ *)
 
 let Part2 result1 input = 
-    "result2"
+    "day3 result2"
