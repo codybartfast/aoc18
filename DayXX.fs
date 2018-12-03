@@ -8,13 +8,13 @@ open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
 
-let lines (text:string) = 
+let toLines (text:string) = 
     text.Split("\r\n".ToCharArray(), StringSplitOptions.RemoveEmptyEntries) 
     |> List.ofSeq 
 let rec repeat item = seq{ yield item; yield! repeat item }
 let len (seq : seq<'a>) = Seq.length seq
 let toChars (str : string) = str.ToCharArray()
-let fromChars (chrs : char[]) = String(chrs)
+let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
 let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
 let toHex = BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
@@ -29,7 +29,7 @@ let print obj = (printfn "%O" obj); obj
 (* ================ Part A ================ *) 
 
 let Part1 input = 
-    input |> lines
+    input |> toLines
     
 
 (* ================ Part B ================ *)
