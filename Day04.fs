@@ -1,107 +1,93 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/HKWGUqMmKYd7HsfzxwRdM4rdHIEIz_q8VWqHuaa8knk/data.html *)
 
 module Day04
 
-// #nowarn "0025"
+#nowarn "0025"
 
 open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
-let rec repeat item = seq{ yield item; yield! repeat item }
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
-let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
+
 type State = Awake | Asleep
-let rxIsMatch pattern str = Regex.IsMatch(str, pattern)
+type GuardMap = Map<string, Map<int, int>>
 
-//          1         
-//012345678901234567890123456789012345678901
-//[1518-11-16 00:00] Guard #2039 begins shift
-let getTime (str:string) = 
-    DateTime.Parse(str.Substring(1, 11)+"T"+str.Substring(12,5))
+let parseLine (line:string) =
+    let time =  DateTime.Parse(line.Substring(1, 16))
+    let guard = 
+        let mtch = rxMatch "\#(\d+)" line
+        if mtch.Success then Some (groupValue mtch 1) else None
+    let state = 
+        if line.Contains("asleep") then Asleep else Awake
+    (time, (guard, state))
 
-let analyseShift  (map : Map<string, Map<int, int>>) (timeEntries : (DateTime * string) list) =
-    let entries =
-        timeEntries
-        |> List.map (fun (time, str) -> (time.Hour, time.Minute, str))
-    //let startMinute  = 
-    //    let time = timeEntries.Head |> fst
-    //    match time.Hour, time.Minute with
-    //    | 0, m -> m
-    //    | _ -> -1
+let buildGuardMap = 
+    let addMinute guard (map : GuardMap) minute  =
+        let minuteMap = 
+            match map.TryFind guard with
+            | Some minuteMap -> minuteMap | _ -> Map.empty
+        let count =
+            match minuteMap.TryGetValue minute with
+            | (true, count) -> count  | _ -> 0
+        map.Add (guard, minuteMap.Add (minute, (count + 1)))
 
-    let entriesWithEnd = entries @ [(0, 61, "any string")]
-
-    (((-1000, "null guard", Awake), map), entriesWithEnd)
-    ||> List.fold (fun ((prevStart, prevGuard, prevState), map) (hour, minute, text) -> 
-
-        let thisStart = 
-            match hour, minute with
-            | 0, m -> m
-            | _ -> -1                
-
+    let addEntry (previousInfo, map) entry =
+        let (prevMinute, prevGuard, prevState) = previousInfo
+        let (minute, (guardOpt, state)) = entry
+        let guard = 
+            match guardOpt with 
+            | Some guard -> guard 
+            | _ -> prevGuard
         let map = 
             match prevState with
-            | Asleep ->
-                (map, [prevStart..(thisStart-1)])
-                ||> List.fold (fun map min -> 
-                    let minuteMap = 
-                        match map.TryGetValue prevGuard with
-                        | (true, m) -> m
-                        | _ -> Map.empty
-                    let count =
-                        match minuteMap.TryGetValue min with
-                        | (true, c) -> c
-                        | _ -> 0
-                    let newMinuteMap = minuteMap.Add (min, (count + 1))
-                    map.Add (prevGuard, newMinuteMap)  
-                )
             | Awake -> map  
-        let thisGuard = 
-            rxMatch "\#(\d+)" text |> fun m ->
-                if m.Success then groupValue m 1 else prevGuard
+            | Asleep ->
+                Seq.fold (addMinute prevGuard) map [prevMinute..(minute-1)]
+        ((minute, guard, state), map)
 
-        let thisState =
-            if text.Contains("asleep") then Asleep else Awake
-        ((thisStart, thisGuard, thisState), map))
-    |> snd
+    let addEntriesForDay map =
+        Seq.sortBy fst
+        >> Seq.map (fun ((time : DateTime), data) -> (time.Minute, data))
+        >> fun entries -> seq{ yield! entries; yield (61, (None, Awake))}           
+        >> Seq.fold addEntry ((0, "any string", Awake), map)
+        >> snd
+
+    Seq.map parseLine    
+    >> Seq.groupBy (fun (time, _) -> time.AddHours(11.0).DayOfYear)
+    >> Seq.map snd
+    >> Seq.fold addEntriesForDay Map.empty
 
 let Part1 input = 
-    let map =
-        input |> toLines
-        |> List.map (fun str -> ((getTime str), str))
-        |> List.groupBy (fun (time, _) -> time.AddHours(1.0).DayOfYear)
-        |> List.map (snd >> List.sortBy fst)
-        |> List.fold analyseShift (Map.empty)
-    
-    let (guard, minute, _) =
-        map
+    let guardMap = input |> toLines |> buildGuardMap
+    let sleepyGuard =
+        guardMap
         |> Map.toSeq
-        |> Seq.map (fun (guard, minMap) ->
-            let (freqMin, freqTotal) =
-                minMap
-                |> Map.toSeq
-                |> Seq.maxBy snd
-            guard, freqMin, freqTotal)
-        |> Seq.maxBy (fun (_, _, freqTotal) -> freqTotal)
-
-    (guard |> int) * minute
-
+        |> Seq.groupBy fst
+        |> Seq.maxBy(fun (_, minuteMap) ->
+                minuteMap
+                |> Seq.collect (snd >> Map.toSeq)
+                |> Seq.sumBy snd)
+        |> fst 
+    let sleepyMinute = 
+        guardMap.[sleepyGuard]
+        |> Map.toSeq
+        |> Seq.maxBy snd
+        |> fst
+    (sleepyGuard |> int) * sleepyMinute
+    
 (* ================ Part B ================ *)
 
 let Part2 result1 input = 
-    "result2"
+    input |> toLines |> buildGuardMap
+    |> Map.toSeq
+    |> Seq.map (fun (guard, minuteMap) ->
+        minuteMap
+        |> Map.toSeq
+        |> Seq.maxBy snd
+        |> fun (freqMinute, freqCount) -> guard, freqMinute, freqCount)
+    |> Seq.maxBy (fun (_, _, freqTotal) -> freqTotal)
+    |> fun (freqGuard, freqMinute, _) -> (freqGuard |> int) * freqMinute
