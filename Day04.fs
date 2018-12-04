@@ -87,29 +87,19 @@ let Part1 input =
         |> List.groupBy (fun (time, _) -> time.AddHours(1.0).DayOfYear)
         |> List.map (snd >> List.sortBy fst)
         |> List.fold analyseShift (Map.empty)
-    map
-
-    let sleepy =
+    
+    let (guard, minute, _) =
         map
         |> Map.toSeq
-        |> Seq.groupBy fst
-        |> Seq.maxBy(fun (_, minuteMap) ->
-                minuteMap
-                |> Seq.map snd
-                |> Seq.collect Map.toSeq
-                |> Seq.map snd
-                |> Seq.sum)
-        |> fst 
-    
-    let minuteMap = map.[sleepy]
-    let sleepyMinute = 
-        minuteMap
-        |> Map.toSeq
-        |> Seq.maxBy snd
-        |> fst
-    (sleepy |> int) * sleepyMinute
-    
-    //""
+        |> Seq.map (fun (guard, minMap) ->
+            let (freqMin, freqTotal) =
+                minMap
+                |> Map.toSeq
+                |> Seq.maxBy snd
+            guard, freqMin, freqTotal)
+        |> Seq.maxBy (fun (_, _, freqTotal) -> freqTotal)
+
+    (guard |> int) * minute
 
 (* ================ Part B ================ *)
 
