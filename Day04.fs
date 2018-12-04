@@ -25,15 +25,91 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
+type State = Awake | Asleep
+let rxIsMatch pattern str = Regex.IsMatch(str, pattern)
 
-let parseLine  = rxMatch "(\d)+" >> fun m ->
-        let grp i = groupValue m i
-        let grpi = grp >> int
-        grpi 1
-    
+//          1         
+//012345678901234567890123456789012345678901
+//[1518-11-16 00:00] Guard #2039 begins shift
+let getTime (str:string) = 
+    DateTime.Parse(str.Substring(1, 11)+"T"+str.Substring(12,5))
+
+let analyseShift  (map : Map<string, Map<int, int>>) (timeEntries : (DateTime * string) list) =
+    let entries =
+        timeEntries
+        |> List.map (fun (time, str) -> (time.Hour, time.Minute, str))
+    //let startMinute  = 
+    //    let time = timeEntries.Head |> fst
+    //    match time.Hour, time.Minute with
+    //    | 0, m -> m
+    //    | _ -> -1
+
+    let entriesWithEnd = entries @ [(0, 61, "any string")]
+
+    (((-1000, "null guard", Awake), map), entriesWithEnd)
+    ||> List.fold (fun ((prevStart, prevGuard, prevState), map) (hour, minute, text) -> 
+
+        let thisStart = 
+            match hour, minute with
+            | 0, m -> m
+            | _ -> -1                
+
+        let map = 
+            match prevState with
+            | Asleep ->
+                (map, [prevStart..(thisStart-1)])
+                ||> List.fold (fun map min -> 
+                    let minuteMap = 
+                        match map.TryGetValue prevGuard with
+                        | (true, m) -> m
+                        | _ -> Map.empty
+                    let count =
+                        match minuteMap.TryGetValue min with
+                        | (true, c) -> c
+                        | _ -> 0
+                    let newMinuteMap = minuteMap.Add (min, (count + 1))
+                    map.Add (prevGuard, newMinuteMap)  
+                )
+            | Awake -> map  
+        let thisGuard = 
+            rxMatch "\#(\d+)" text |> fun m ->
+                if m.Success then groupValue m 1 else prevGuard
+
+        let thisState =
+            if text.Contains("asleep") then Asleep else Awake
+        ((thisStart, thisGuard, thisState), map))
+    |> snd
+
 let Part1 input = 
-    input |> toLines
+    let map =
+        input |> toLines
+        |> List.map (fun str -> ((getTime str), str))
+        |> List.groupBy (fun (time, _) -> time.AddHours(1.0).DayOfYear)
+        |> List.map (snd >> List.sortBy fst)
+        |> List.fold analyseShift (Map.empty)
+    map
+
+    let sleepy =
+        map
+        |> Map.toSeq
+        |> Seq.groupBy fst
+        |> Seq.maxBy(fun (_, minuteMap) ->
+                minuteMap
+                |> Seq.map snd
+                |> Seq.collect Map.toSeq
+                |> Seq.map snd
+                |> Seq.sum)
+        |> fst 
     
+    let minuteMap = map.[sleepy]
+    let sleepyMinute = 
+        minuteMap
+        |> Map.toSeq
+        |> Seq.maxBy snd
+        |> fst
+    (sleepy |> int) * sleepyMinute
+    
+    //""
 
 (* ================ Part B ================ *)
 
