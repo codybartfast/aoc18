@@ -1,6 +1,6 @@
 ﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
 
-module DayXX
+module Day04
 
 // #nowarn "0025"
 
@@ -26,8 +26,8 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d)+" >> fun mtch ->
-        let grp idx = groupValue mtch idx
+let parseLine  = rxMatch "(\d)+" >> fun m ->
+        let grp i = groupValue m i
         let grpi = grp >> int
         grpi 1
     
