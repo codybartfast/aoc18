@@ -7,6 +7,7 @@ module Day05
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open System.Numerics
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let rec repeat item = seq{ yield item; yield! repeat item }
@@ -26,14 +27,30 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d)+" >> fun mtch ->
-        let grp idx = groupValue mtch idx
-        let grpi = grp >> int
-        grpi 1
+let rec mark i (chars:char[]) =
+    let asciiVal indx = chars.[indx] |> int
+    match i with 
+    | i when i >= (chars.Length - 2) -> chars
+    | _ ->
+        if Math.Abs(asciiVal i - asciiVal (i + 1)) = 32 
+        then chars.[i] <- '_'; chars.[i + 1] <- '_'; mark (i + 1) chars
+        else  mark (i + 1) chars
+
+let rec collapse (polymer:string) =
+    polymer
+    |> toChars
+    |> mark 0
+    |> toString
+    |> (fun str -> str.Replace("_", ""))
+    |> (fun newPoly ->
+        if len newPoly = len polymer 
+        then len newPoly
+        else collapse newPoly)
+
     
 let Part1 input = 
-    input |> toLines
-    
+    input |> collapse
+
 
 (* ================ Part B ================ *)
 
