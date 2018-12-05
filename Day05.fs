@@ -8,6 +8,7 @@ open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
 open System.Numerics
+open Microsoft.VisualBasic.CompilerServices
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let rec repeat item = seq{ yield item; yield! repeat item }
@@ -54,5 +55,13 @@ let Part1 input =
 
 (* ================ Part B ================ *)
 
+let removeType (polymer:string) (ut:int) =
+    polymer.Replace(ut |> char |> string, "")
+            .Replace(ut + 32 |> char |> string, "")
+
 let Part2 result1 input = 
-    "result2"
+    [65..90]
+    |> Seq.map (fun ut -> removeType input ut)
+    |> Seq.map collapse
+    |> Seq.min
+
