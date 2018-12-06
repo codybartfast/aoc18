@@ -26,13 +26,77 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d)+" >> fun mtch ->
+let parseLine  = rxMatch "(\d+), (\d+)" >> fun mtch ->
     let grp idx = groupValue mtch idx
     let grpi = grp >> int
-    grpi 1
-    
+    (grpi 1, grpi 2)
+   
+let ring (X, Y) radius =
+    let steps = radius - 1 
+    seq{ 
+        for xDiff in [0..steps] do 
+            let yDiff = steps - xDiff
+            yield (X + xDiff, Y + yDiff)
+            yield (X + xDiff, Y - yDiff)
+            yield (X - xDiff, Y + yDiff)
+            yield (X - xDiff, Y - yDiff) }
+            |> Seq.distinct
+    //let (X, Y) = (x - radius, y - radius)
+    //let length = (2 * radius) + 1
+    //let steps = length - 1
+    //let top = seq {for x in [X..(X + steps)] do yield (x, Y)}
+    //let right = seq {for y in [Y..(Y + steps)] do yield (X + steps, y)}
+    //let bottom = seq {for x in [X..(X + steps)] do yield (x, Y + steps)}
+    //let left = seq {for y in [Y..(Y + steps)] do yield (X, y)}
+    //Seq.concat [top; right; bottom; left]
+
+let rings centre =
+    let rec rings radius =
+        seq{ 
+            yield ring centre radius
+            yield! rings (radius + 1) }
+    rings 1
+
+let inline findNearest (points : Set<int*int>) point =
+    let rec find (rings : seq<seq<int*int>>) =       
+        let ring = Seq.head rings
+        let neighbours = ring |> Seq.filter (fun p -> points.Contains p) |> List.ofSeq
+        match neighbours.Length with
+            | 1 -> Some ( neighbours |> Seq.head)
+            | 0 -> find (Seq.tail rings)
+            | _ -> None
+    let rings = rings point
+    find rings
+
+
 let Part1 (input : string) = 
-    input |> toLines
+    let points =  
+        input |> toLines |> List.map parseLine
+        |> Set
+
+    let (X, Y) = (points |> Seq.maxBy fst |> fst, points |> Seq.maxBy snd |> snd)
+
+    let perimiter = 
+        seq{
+            yield! seq{for x in 0..X do yield (x, 0)}
+            yield! seq{for x in 0..X do yield (x, Y)}
+            yield! seq{for y in 0..Y do yield (0, y)}
+            yield! seq{for y in 0..Y do yield (X, y)}}
+    
+    let infinite =
+        perimiter
+        |> Seq.map (findNearest points)
+        |> Set
+
+    seq{for x in 0..X do 
+        (print x) |> ignore
+        for y in 0..Y do yield (x, y)}
+    |> Seq.map (findNearest points)
+    |> Seq.filter(fun p -> not (infinite.Contains p))
+    |> Seq.choose id
+    |> Seq.countBy id
+    |> Seq.maxBy snd
+
     
 
 (* ================ Part B ================ *)
