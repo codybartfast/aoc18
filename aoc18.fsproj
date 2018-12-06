@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +12,7 @@
     <Compile Include="Day03.fs" />
     <Compile Include="Day04.fs" />
     <Compile Include="Day05.fs" />
+    <Compile Include="Day06.fs" />
     <Compile Include="DayXX.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
