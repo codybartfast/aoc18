@@ -1,125 +1,75 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/iD56U65nlMdpnJXZY7SoYT5ERY1yXXbDWcsg_9TYgls/data.html *)
 
 module Day06
 
-// #nowarn "0025"
-
-open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
-let rec repeat item = seq{ yield item; yield! repeat item }
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
-let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
 let parseLine  = rxMatch "(\d+), (\d+)" >> fun mtch ->
-    let grp idx = groupValue mtch idx
-    let grpi = grp >> int
+    let grpi = (groupValue mtch) >> int
     (grpi 1, grpi 2)
-   
-let ring (X, Y) radius =
-    let steps = radius - 1 
-    seq{ 
-        for xDiff in [0..steps] do 
-            let yDiff = steps - xDiff
-            yield (X + xDiff, Y + yDiff)
-            yield (X + xDiff, Y - yDiff)
-            yield (X - xDiff, Y + yDiff)
-            yield (X - xDiff, Y - yDiff) }
-            |> Seq.distinct
-    //let (X, Y) = (x - radius, y - radius)
-    //let length = (2 * radius) + 1
-    //let steps = length - 1
-    //let top = seq {for x in [X..(X + steps)] do yield (x, Y)}
-    //let right = seq {for y in [Y..(Y + steps)] do yield (X + steps, y)}
-    //let bottom = seq {for x in [X..(X + steps)] do yield (x, Y + steps)}
-    //let left = seq {for y in [Y..(Y + steps)] do yield (X, y)}
-    //Seq.concat [top; right; bottom; left]
 
-let rings centre =
-    let rec rings radius =
-        seq{ 
-            yield ring centre radius
-            yield! rings (radius + 1) }
-    rings 1
+let getSize locations =     
+        (locations |> Seq.maxBy fst |> fst
+        , locations |> Seq.maxBy snd |> snd)
 
-let inline findNearest (points : Set<int*int>) point =
-    let rec find (rings : seq<seq<int*int>>) =       
-        let ring = Seq.head rings
-        let neighbours = ring |> Seq.filter (fun p -> points.Contains p) |> List.ofSeq
-        match neighbours.Length with
-            | 1 -> Some ( neighbours |> Seq.head)
-            | 0 -> find (Seq.tail rings)
-            | _ -> None
-    let rings = rings point
-    find rings
+let allCoords (xMax, yMax) = 
+    seq{for x in 0..xMax do 
+         for y in 0..yMax do yield (x, y)}
 
+let distance (x1, y1) (x2, y2) =  (abs (x1 - x2)) + (abs (y1 - y2))
+  
+let getNearest locations location =
+    let nearest = 
+        locations
+        |> Seq.groupBy (distance location)
+        |> Seq.minBy fst
+        |> snd
+        |> List.ofSeq
+    match nearest.Length with
+    | 1 -> Some nearest.Head
+    | _ -> None 
 
-let Part1 (input : string) = "result1" (*
-    let points =  
+let Part1 (input : string) = 
+    let locations =  
         input |> toLines |> List.map parseLine
         |> Set
 
-    let (X, Y) = (points |> Seq.maxBy fst |> fst, points |> Seq.maxBy snd |> snd)
+    let (xMax, yMax) = getSize locations
 
-    let perimiter = 
-        seq{
-            yield! seq{for x in 0..X do yield (x, 0)}
-            yield! seq{for x in 0..X do yield (x, Y)}
-            yield! seq{for y in 0..Y do yield (0, y)}
-            yield! seq{for y in 0..Y do yield (X, y)}}
+    let perimiter = seq{
+            yield! seq{for x in 0..xMax do yield (x, 0)}
+            yield! seq{for x in 0..xMax do yield (x, yMax)}
+            yield! seq{for y in 0..yMax do yield (0, y)}
+            yield! seq{for y in 0..yMax do yield (xMax, y)}}
     
-    let infinite =
+    let infiniteLocations =
         perimiter
-        |> Seq.map (findNearest points)
+        |> Seq.map (getNearest locations)
         |> Set
 
-    seq{for x in 0..X do 
-        (print x) |> ignore
-        for y in 0..Y do yield (x, y)}
-    |> Seq.map (findNearest points)
-    |> Seq.filter(fun p -> not (infinite.Contains p))
+    allCoords (xMax, yMax)
+    |> Seq.map (getNearest locations)
+    |> Seq.filter(fun p -> not (infiniteLocations.Contains p))
     |> Seq.choose id
     |> Seq.countBy id
-    |> Seq.maxBy snd
-
-*)    
+    |> Seq.maxBy snd |> snd
 
 (* ================ Part B ================ *)
 
-let max = 10000
+let maxDistance = 10000
 
-let distanceAll points (x, y) =
-    points
-    |> Seq.map (fun (a, b) -> (abs (a - x)) + (abs (b - y)))
-    |> Seq.sum
-
-let Part2 result1 (input : string) = //  "result2" 
-    let points =  
+let Part2 result1 (input : string) =
+    let locations =  
         input |> toLines |> List.map parseLine
         |> Set
 
-    let (X, Y) = (points |> Seq.maxBy fst |> fst, points |> Seq.maxBy snd |> snd)
-
-    seq{for x in 0..X do 
-        (print x) |> ignore
-        for y in 0..Y do yield (x, y)}
-    |> Seq.map (distanceAll points)
-    |> Seq.filter (fun d -> d < max)
+    allCoords (getSize locations)
+    |> Seq.map (fun (x, y) -> locations |> Seq.sumBy (distance (x,y)))
+    |> Seq.filter (fun dist -> dist < maxDistance)
     |> Seq.length
-    
-   // distanceAll points (4,3)
