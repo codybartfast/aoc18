@@ -69,7 +69,7 @@ let inline findNearest (points : Set<int*int>) point =
     find rings
 
 
-let Part1 (input : string) = 
+let Part1 (input : string) = "result1" (*
     let points =  
         input |> toLines |> List.map parseLine
         |> Set
@@ -97,13 +97,29 @@ let Part1 (input : string) =
     |> Seq.countBy id
     |> Seq.maxBy snd
 
-    
+*)    
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =   "result2" (*
-    input |> toLines
+let max = 10000
 
+let distanceAll points (x, y) =
+    points
+    |> Seq.map (fun (a, b) -> (abs (a - x)) + (abs (b - y)))
+    |> Seq.sum
 
+let Part2 result1 (input : string) = //  "result2" 
+    let points =  
+        input |> toLines |> List.map parseLine
+        |> Set
 
-//*)
+    let (X, Y) = (points |> Seq.maxBy fst |> fst, points |> Seq.maxBy snd |> snd)
+
+    seq{for x in 0..X do 
+        (print x) |> ignore
+        for y in 0..Y do yield (x, y)}
+    |> Seq.map (distanceAll points)
+    |> Seq.filter (fun d -> d < max)
+    |> Seq.length
+    
+   // distanceAll points (4,3)
