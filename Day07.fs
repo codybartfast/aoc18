@@ -1,6 +1,6 @@
 ﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
 
-module DayXX
+module Day07
 
 // #nowarn "0025"
 
