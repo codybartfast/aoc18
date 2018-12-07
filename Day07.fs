@@ -26,14 +26,47 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d+)" >> fun mtch ->
+type Node = string * (string list)
+
+let parseLine  = rxMatch "S.*([A-Z]).*([A-Z])" >> fun mtch ->
     let grp idx = groupValue mtch idx
     let grpi = grp >> int
-    grpi 1
+    grp 1, grp 2
+
+let getEnds data =
+    let followers = data |> Seq.map snd |> Set
+    let befores =  data |> Seq.map fst |> Set
+    let start = (Set.difference befores followers) 
+    let finish = (Set.difference followers befores) |> Seq.exactlyOne
+    let all = Set.union befores followers
+    (start, finish, all)
+
+let getDeps (data : (string*string) list) all =
+    all
+    |> Seq.map (fun inst -> inst, (data |> Seq.filter (fun (b,f) -> f = inst) |> Seq.map fst |> Set))
+    |> Map
+    
+
+let rec findPath (deps : Map<string,Set<string>>) (soFar : string list)  (toDo : string Set) (available : string Set) =
+    if available.IsEmpty then List.rev soFar else
+    let instr = available |> Seq.sort |> Seq.head
+    let soFar' = instr::soFar
+    let toDo' = toDo.Remove instr
+    let available' = 
+        toDo'
+        |> Seq.filter (fun t -> Set.difference deps.[t] (Set soFar') = Set.empty) 
+        |> Set
+    findPath deps soFar' toDo' available'
+
+
     
 let Part1 (input : string) =  //  "result1" (*
-    input |> toLines
+    let data =
+        input |> toLines |> List.map parseLine
+    let (start, finish, all) = getEnds data
 
+    findPath (getDeps data all) [] all (Set start)
+    |> String.concat ""
 
 
 //*)
