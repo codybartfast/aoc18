@@ -26,13 +26,28 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d+)" >> fun mtch ->
-    let grp idx = groupValue mtch idx
-    let grpi = grp >> int
-    grpi 1
+let readMetadata (data, mdTotal) mdCount =
+    (List.skip mdCount data)
+    , mdTotal + (List.take mdCount data |> List.sum)
+
+let rec readChild (data, mdTotal) =
+    match data with
+    | [] -> ([], mdTotal)
+    | [_] -> failwith "oops"
+    | chCount::(mdCount::tail) -> 
+        let (data, mdTotal) =
+            ((tail, mdTotal), [1..chCount])
+            ||> List.fold (fun state _ -> readChild state)
+        readMetadata (data, mdTotal) mdCount
+
+
+
     
 let Part1 (input : string) =  //  "result1" (*
-    input |> toLines
+    let data = input.Split(' ') |> List.ofArray |> List.map (int)
+    readChild (data, 0)
+    
+
 
 
 
