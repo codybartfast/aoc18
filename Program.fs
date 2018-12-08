@@ -12,8 +12,8 @@ let getInputFile name =
     Path.Combine(__SOURCE_DIRECTORY__, "inputs", name) + ".txt"
 let readText name = File.ReadAllText(getInputFile name)
 
-open Day07
-let name = "day07"
+open Day08
+let name = "day08"
 
 let text = readText name
 
@@ -25,6 +25,7 @@ let main argv =
     sw.Start()
     let result1 = Part1 input1
     printfn "%A" result1 
+    printfn "%O" result1 
     showTime ()
 
     let input2 = input1
@@ -32,6 +33,7 @@ let main argv =
     sw.Restart() 
     let result2 = Part2 result1 input2
     printfn "%A" result2
+    printfn "%O" result2
     showTime ()
 
     Console.ReadKey() |> ignore
