@@ -40,26 +40,45 @@ let rec readChild (data, mdTotal) =
             ||> List.fold (fun state _ -> readChild state)
         readMetadata (data, mdTotal) mdCount
 
-
-
-    
 let Part1 (input : string) =  //  "result1" (*
     let data = input.Split(' ') |> List.ofArray |> List.map (int)
     readChild (data, 0)
-    
-
-
-
-
 //*)
 
     
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =   "result2" (*
-    input |> toLines
+let calcValue data mdCount childValues =
+    let metadata = List.take mdCount data
+    let childCount = Array.length childValues
+    let value = 
+        if childCount = 0 then
+             List.sum metadata
+         else 
+            metadata
+            |> List.filter (fun idx -> idx <= childCount)
+            |> List.map (fun idx -> childValues.[idx  - 1])
+            |> List.sum
+    (List.skip mdCount data), value
 
+let rec readValue data : (int list * int) =
+    match data with
+    | [] -> ([], -1)
+    | [_] -> failwith "oops"
+    | chCount::(mdCount::tail) -> 
+        let (valuesList, data) =
+            (tail, [1..chCount])
+            ||> List.mapFold (fun data _ -> 
+                let data, value = (readValue data)
+                (value, data))
+        let values = Array.ofList valuesList
+        calcValue data mdCount values
+
+
+let Part2 result1 (input : string) = //  "result2" (*
+    let data = input.Split(' ') |> List.ofArray |> List.map (int)
+    readValue data
 
 
 //*)
