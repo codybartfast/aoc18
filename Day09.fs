@@ -7,6 +7,7 @@ module Day09
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open Day08
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let rec repeat item = seq{ yield item; yield! repeat item }
@@ -26,14 +27,72 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = rxMatch "(\d+)" >> fun mtch ->
+type Game = { Marbles : int[] ; Length : int ; Current : int }
+
+let parseLine  = rxMatch "(\d+)\D+(\d+)" >> fun mtch ->
     let grp idx = groupValue mtch idx
     let grpi = grp >> int
-    grpi 1
+    grpi 1, grpi 2
+
+type Marble = 
+    {   Value : int
+        mutable Previous : Marble
+        mutable Next : Marble}
+
+let rec zeroMarble = {Value = 0; Previous = zeroMarble; Next = zeroMarble }
+
+let rec clockwise n (marble:Marble) = 
+    match n with
+    | 0 -> marble
+    | n -> clockwise (n-1) marble.Next
+
+let rec counterClockwise n (marble:Marble) = 
+    match n with
+    | 0 -> marble
+    | n -> counterClockwise (n-1) marble.Previous    
+
+let insert marble value =
+    let newMarble = {Value = value; Previous = marble; Next = marble.Next}
+    marble.Next.Previous <- newMarble 
+    marble.Next <- newMarble 
+    newMarble
+
+let remove marble =
+    marble.Next.Previous <- marble.Previous
+    marble.Previous.Next <- marble.Next
+    marble.Next
+
+let makeMove marble scores turn player =
+    if turn % 23 <> 0 then 
+        (insert (clockwise 1 marble) turn), scores
+    else
+        let toRemove = counterClockwise 7 marble
+        let removedValue = toRemove.Value
+        let currentScore =
+            match Map.tryFind player scores with
+            | Some score -> score
+            | None -> 0
+        (remove toRemove)
+            , scores.Add (player, currentScore + turn + removedValue)
+
+let playGame playerCount topMarble =
+    let rec play marble scores turn  =  
+        if turn > topMarble then scores
+        else 
+            let (marble', scores') = 
+                makeMove marble scores turn (turn % playerCount)
+            play marble' scores' (turn+1)
+    play zeroMarble Map.empty 1
+
     
 let Part1 (input : string) =  //  "result1" (*
-    input |> toLines
-
+    let (players, topMarble) = input |>  parseLine
+    //let (players, topMarble) = 9, 25
+    let scores = playGame players topMarble
+    scores
+    |> Map.toSeq
+    |> Seq.maxBy snd
+    |> snd
 
 
 //*)
@@ -43,7 +102,8 @@ let Part1 (input : string) =  //  "result1" (*
 (* ================ Part B ================ *)
 
 let Part2 result1 (input : string) =   "result2" (*
-    input |> toLines
+    input |> toLines |> List.map parseLine
+
 
 
 
