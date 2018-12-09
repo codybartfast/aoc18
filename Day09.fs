@@ -71,9 +71,9 @@ let makeMove marble scores turn player =
         let currentScore =
             match Map.tryFind player scores with
             | Some score -> score
-            | None -> 0
+            | None -> 0L
         (remove toRemove)
-            , scores.Add (player, currentScore + turn + removedValue)
+            , scores.Add (player, currentScore + (int64 turn) + (int64 removedValue))
 
 let playGame playerCount topMarble =
     let rec play marble scores turn  =  
@@ -88,7 +88,7 @@ let playGame playerCount topMarble =
 let Part1 (input : string) =  //  "result1" (*
     let (players, topMarble) = input |>  parseLine
     //let (players, topMarble) = 9, 25
-    let scores = playGame players topMarble
+    let scores = playGame players (topMarble * 100)
     scores
     |> Map.toSeq
     |> Seq.maxBy snd
