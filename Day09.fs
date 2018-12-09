@@ -1,110 +1,84 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/8kM1fY7tJClZhTUfWEuLzypu8pcpqPLI_rUhrAgMO9M/data.html *)
 
 module Day09
 
-// #nowarn "0025"
+module Ring =
 
-open System
+    type Ring<'a> = 
+        {   Item : 'a
+            mutable Prev : Ring<'a>
+            mutable Next : Ring<'a> }
+
+    let singleton item = 
+        let rec s = {Item = item; Prev = s; Next = s }
+        s
+    
+    let insert item ring = 
+        let pair =  {Item = item; Prev = ring; Next = ring.Next }
+        ring.Next.Prev <- pair
+        ring.Next <- pair
+        pair
+
+    let remove ring =
+        if ring.Next = ring then failwith "Last pair standing"
+        else
+            let item = ring.Item
+            ring.Prev.Next <- ring.Next
+            ring.Next.Prev <- ring.Prev
+            ring.Next
+
+    let rec forward n ring = 
+        match n with
+        | 0 -> ring
+        | n -> forward (n-1) ring.Next
+        
+    let rec back n ring = 
+        match n with
+        | 0 -> ring
+        | n -> back (n-1) ring.Prev  
+
 open System.Text.RegularExpressions
-open System.Collections.Generic
-open Day08
+open Ring
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
-let rec repeat item = seq{ yield item; yield! repeat item }
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
-let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-type Game = { Marbles : int[] ; Length : int ; Current : int }
-
 let parseLine  = rxMatch "(\d+)\D+(\d+)" >> fun mtch ->
-    let grp idx = groupValue mtch idx
-    let grpi = grp >> int
+    let grpi idx = groupValue mtch idx |> int64
     grpi 1, grpi 2
 
-type Marble = 
-    {   Value : int
-        mutable Previous : Marble
-        mutable Next : Marble}
-
-let rec zeroMarble = {Value = 0; Previous = zeroMarble; Next = zeroMarble }
-
-let rec clockwise n (marble:Marble) = 
-    match n with
-    | 0 -> marble
-    | n -> clockwise (n-1) marble.Next
-
-let rec counterClockwise n (marble:Marble) = 
-    match n with
-    | 0 -> marble
-    | n -> counterClockwise (n-1) marble.Previous    
-
-let insert marble value =
-    let newMarble = {Value = value; Previous = marble; Next = marble.Next}
-    marble.Next.Previous <- newMarble 
-    marble.Next <- newMarble 
-    newMarble
-
-let remove marble =
-    marble.Next.Previous <- marble.Previous
-    marble.Previous.Next <- marble.Next
-    marble.Next
-
-let makeMove marble scores turn player =
-    if turn % 23 <> 0 then 
-        (insert (clockwise 1 marble) turn), scores
+let takeTurn marble scores turn player =
+    if turn % 23L <> 0L then 
+        (insert turn (marble.Next)), scores
     else
-        let toRemove = counterClockwise 7 marble
-        let removedValue = toRemove.Value
+        let toRemove = back 7 marble
         let currentScore =
             match Map.tryFind player scores with
             | Some score -> score
             | None -> 0L
-        (remove toRemove)
-            , scores.Add (player, currentScore + (int64 turn) + (int64 removedValue))
+        let newScore = currentScore + turn + toRemove.Item
+        (remove toRemove), (scores.Add (player, newScore))
 
 let playGame playerCount topMarble =
-    let rec play marble scores turn  =  
+    let rec playGame' marble scores turn  =  
         if turn > topMarble then scores
         else 
             let (marble', scores') = 
-                makeMove marble scores turn (turn % playerCount)
-            play marble' scores' (turn+1)
-    play zeroMarble Map.empty 1
-
+                takeTurn marble scores turn (turn % playerCount)
+            playGame' marble' scores' (turn + 1L)
+    playGame' (singleton 0L) Map.empty 1L
+    |> Map.toSeq |> (Seq.maxBy snd) |> snd
     
-let Part1 (input : string) =  //  "result1" (*
-    let (players, topMarble) = input |>  parseLine
-    //let (players, topMarble) = 9, 25
-    let scores = playGame players (topMarble * 100)
-    scores
-    |> Map.toSeq
-    |> Seq.maxBy snd
-    |> snd
+let Part1 (input : string) =
+    let (players, topMarble) = input |> parseLine
+    playGame players topMarble
 
-
-//*)
-
-    
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =   "result2" (*
-    input |> toLines |> List.map parseLine
-
-
-
-
-//*)
+let Part2 result1 (input : string) = 
+    let (players, topMarble) = input |> parseLine
+    playGame players (topMarble * 100L)
