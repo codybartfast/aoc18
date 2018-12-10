@@ -1,99 +1,76 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/I9FwEdzf5qLLCpRjgZxlKAzgyvsKJN-H407f9efaaNg/data.html *)
 
 module Day10
 
-// #nowarn "0025"
-
 open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let rec repeat item = seq{ yield item; yield! repeat item }
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
+let NL = System.Environment.NewLine
 let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-//position=<-42281, -42228> velocity=< 4,  4>
-let parseLine  = rxMatch "\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" >> fun mtch ->
+let parseLine  = 
+    rxMatch "(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" >> fun mtch ->
     let grp idx = groupValue mtch idx
     let grpi = grp >> int
     (grpi 1, grpi 2), (grpi 3, grpi 4) 
 
-let displayLine points : unit =
-    let set = points |> List.map fst |> Set
-    [0..99]
-    |> Seq.iter(fun i -> 
-        if set.Contains i then Console.Write("#")
-        else Console.Write(" "))
-    Console.WriteLine()
-        
-let display (lights : (int * int) list) =
-    let xMin =
-        lights 
-        |> List.groupBy fst |> List.minBy fst |> fst
-    let yMin =
-        lights 
-        |> List.groupBy snd |> List.minBy fst |> fst
-    let relCoords =
-        lights |> List.map (fun (x,y) -> (x - xMin, y - yMin))
-    let visible =
-        relCoords |> List.filter (fun (x, y) -> (x < 100) && (y < 100))
-    let rows = 
-        visible |> List.groupBy snd |> Map
-    [0..30]
-    |> List.iter (fun i ->
-        if rows.ContainsKey i then displayLine (rows.[i])
-        else Console.WriteLine())
+let displayLine points =
+    let xs = points |> List.map fst |> Set
+    [0..(xs.MaximumElement)]
+    |> Seq.map (fun x -> 
+        if xs.Contains x then '#' else ' ')
+    |> toString
  
-let lightSequence (lights : (int * int) list) (vectors : (int * int) list) =
+let display lights =
+    let shiftToOrigin coords =
+        let xMin = coords |> List.groupBy fst |> List.minBy fst |> fst
+        let yMin = coords |> List.groupBy snd |> List.minBy fst |> fst
+        coords |> List.map (fun (x,y) -> (x - xMin, y - yMin))
+    let toRows = List.groupBy snd >> List.sortBy fst >> List.map snd
+    lights
+    |> (shiftToOrigin >> toRows)
+    |> Seq.map displayLine 
+    |> String.concat NL
+ 
+let lightSequence lights vectors =
     (lights, Seq.initInfinite id)
-    ||> Seq.scan (fun lights _ -> 
-        (lights, vectors) ||>  List.map2 (fun (lx, ly) (vx, vy) -> (lx + vx), (ly + vy)))
+    ||> Seq.scan (fun lights time -> 
+        (lights, vectors) 
+        ||>  List.map2 (fun (lx, ly) (vx, vy) -> (lx + vx), (ly + vy)))
  
-let spread lights =
+let size (_time, lights) =
     let xs = lights |> List.map fst |> List.sort
     let ys = lights |> List.map snd |> List.sort
     (List.last xs - List.head xs) + (List.last ys - List.head ys)
-    
-let Part1 (input : string) =  // "result1" (*
+
+let rec findSmallest timedSequenceLights =
+    timedSequenceLights
+    |> Seq.pairwise
+    |> Seq.map (fun (tLights1, tLights2) -> 
+        ((size tLights1 - size tLights2), tLights1))
+    |> Seq.skipWhile (fun (reduction, _) -> reduction > 0)
+    |> Seq.head |> snd
+
+let findMessage input =
     let data = input |> toLines |> List.map parseLine
     let lights = data |> List.map fst
     let vectors = data |> List.map snd
-    let sequence = lightSequence lights vectors
+    let lightSequence = lightSequence lights vectors
+    let timedSequence = 
+        lightSequence |> Seq.mapi (fun i lights -> (i, lights))
+    findSmallest timedSequence
 
-    let iSeq = sequence |> Seq.mapi (fun i lights -> (i, lights))
-    
-    iSeq
-    |> Seq.skipWhile (fun iLights -> (spread (iLights |> snd)) > 300)
-    |> Seq.iter(fun (i, lights) ->
-        Console.WriteLine(i)
-        display lights
-        Console.ReadKey() |> ignore)
-    
-
-//*)
-
-    
+let Part1 (input : string) =
+    findMessage input
+    |> snd |> display |> (fun s -> NL + s + NL)
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =   "result2" (*
-    input |> toLines |> Seq.map parseLine
-
-
-
-
-//*)
+let Part2 result1 (input : string) =
+    findMessage input
+    |> fst
