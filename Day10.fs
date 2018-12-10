@@ -73,11 +73,13 @@ let Part1 (input : string) =  // "result1" (*
     let lights = data |> List.map fst
     let vectors = data |> List.map snd
     let sequence = lightSequence lights vectors
+
+    let iSeq = sequence |> Seq.mapi (fun i lights -> (i, lights))
     
-    sequence
-    |> Seq.skipWhile (fun lights -> (spread lights) > 300)
-    |> Seq.iter(fun lights ->
-        Console.WriteLine(String('_', 50))
+    iSeq
+    |> Seq.skipWhile (fun iLights -> (spread (iLights |> snd)) > 300)
+    |> Seq.iter(fun (i, lights) ->
+        Console.WriteLine(i)
         display lights
         Console.ReadKey() |> ignore)
     
