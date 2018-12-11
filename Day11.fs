@@ -27,17 +27,33 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
-    >> fun mtch ->
-        let grp idx = groupValue mtch idx
-        let grpi = grp >> int
-        grpi 1, grpi 2
+let power serial (x,y) =
+     let rack = x + 10
+     let big = ((rack * y) + serial) * rack
+     ((big % 1000) / 100) - 5
+
+let squares (gx, gy) (sx, sy) =
+    seq{ for x in [1..(gx - (sx-1))] do  
+            for y in [1..(gy - (sy-1))] do
+                yield 
+                    [y..(y+(sy-1))] |> List.map (fun y -> [x..(x+(sx-1))] |> List.map (fun x -> (x,y))) }
+
+let squarePower serial (square : (int * int) list list) =
+    square
+    |> List.collect id
+    |> List.sumBy (power serial)
     
-let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
 
+let Part1 (input : string) =  
+    let serial = input |> int
+    let squares = squares (300,300) (3,3)
+    
+    let serial = 9810
 
+    squares
+    |> Seq.map (fun square -> (square.Head.Head, squarePower serial square))
+    |> Seq.maxBy snd
+    |> fst
 
 //*)
 
