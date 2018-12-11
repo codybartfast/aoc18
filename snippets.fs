@@ -1,5 +1,15 @@
 ﻿module Snippets
 
+let shiftToOrigin coords =
+    // aoc18:10
+    let xMin = coords |> List.groupBy fst |> List.minBy fst |> fst
+    let yMin = coords |> List.groupBy snd |> List.minBy fst |> fst
+    coords |> List.map (fun (x,y) -> (x - xMin, y - yMin))
+
+let toRows coords = 
+    // aoc18:10
+    coords |> List.groupBy snd |> List.sortBy fst |> List.map snd
+
 let rec pairCombos = function
     // aoc18:02
     | [] | [_] -> []
@@ -15,6 +25,7 @@ let rec permutations list =
     match list with
     | [] -> [[]]
     | head::tail -> List.collect (insertAlong head) (permutations tail)
+
 
 module Ring =
     // aoc18:09

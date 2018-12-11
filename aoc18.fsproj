@@ -7,8 +7,7 @@
 
   <ItemGroup>
     <Compile Include="Snippets.fs" />
-    <Compile Include="Day09.fs" />
-    <Compile Include="Day10.fs" />
+    <Compile Include="Day11.fs" />
     <Compile Include="Day1X.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
