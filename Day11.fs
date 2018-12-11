@@ -7,6 +7,7 @@ module Day11
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open System.Net.NetworkInformation
 
 let toLines (text:string) = text.Split('\n') |> List.ofSeq 
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
@@ -44,7 +45,7 @@ let squarePower serial (square : (int * int) list list) =
     |> List.sumBy (power serial)
     
 
-let Part1 (input : string) =  
+let Part1 (input : string) = "r1" (*
     let serial = input |> int
     let squares = squares (300,300) (3,3)
     
@@ -54,17 +55,64 @@ let Part1 (input : string) =
     |> Seq.map (fun square -> (square.Head.Head, squarePower serial square))
     |> Seq.maxBy snd
     |> fst
-
 //*)
-
     
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let simplePower (powerGrid : int[][]) square =
+    square
+    |> List.collect id
+    |> List.sumBy (fun (x,y) -> powerGrid.[y-1].[x-1])
+
+//let getMaxForSize powerGrid size =
+//    let squares = squares (300,300) (size,(print size))
+//    squares
+//    |> Seq.map (fun square -> (square.Head.Head, simplePower powerGrid square))
+//    |> Seq.maxBy snd
+//    |> (fun ((x,y), p) -> ((x,y,size), p))
+
+let topSquares gSize size =
+    [1..(gSize-(size-1))]
+    |> Seq.map (fun X -> 
+        [1..size] |> List.map (fun y -> [X..(X+(size-1))] |> List.map (fun x -> (x,y))))
+
+let colValues (powerGrid : int[][]) (topSquare : (int * int) list list) =
+    let gSize = powerGrid.Length
+    let sSize = topSquare.Length
+    let (firstX, firstY) = topSquare.Head.Head
+    let lastX = firstX + (sSize - 1)
+    let topValue = simplePower powerGrid topSquare
+    seq{    
+        yield! ((((firstX, firstY, sSize), topValue), [(sSize+1)..gSize])
+                ||> List.scan (fun (_, prevPower) newY -> 
+                    let oldY = newY - sSize
+                    let newPower = Array.sum powerGrid.[newY-1].[(firstX-1)..(lastX-1)]
+                    let oldPower = Array.sum powerGrid.[oldY-1].[(firstX-1)..(lastX-1)]
+                    let power = prevPower + (newPower - oldPower)
+                    ((firstX, (oldY + 1), sSize), power)))}
+    
+let getMaxForSize powerGrid gSize sSize =
+    let topSquares = topSquares gSize (print sSize)
+    topSquares
+    |> Seq.collect (colValues powerGrid)
+    |> Seq.maxBy snd
+
+let Part2 result1 (input : string) = // "result2" 
+    let serial = input |> int
+    
+    let serial = 9810
+
+    let powerGrid = 
+        [|1..300|]
+        |> Array.map (fun y -> [|1..300|] |> Array.map (fun x -> power serial (x,y)))
+
+    //getMaxForSize powerGrid 300 3
+
+    [1..300]
+    |> Seq.map (fun size -> getMaxForSize powerGrid 300 size)
+    |> Seq.maxBy snd
+    |> fst
 
 
-
-
-//*)
+//
