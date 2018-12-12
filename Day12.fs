@@ -26,17 +26,74 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
+let maxPot = 200
+let plant = '#'
+let noPlant = '.'
 
-let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
+let parseInitial  = 
+    rxMatch " ([\.\#]+)" 
+    >> fun mtch ->
+        (groupValue mtch 1)
+        |> toChars
+    
+let parseTansforms  = 
+    rxMatch "(\S+) => (\S)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
-        let grpi = grp >> int
-        grpi 1, grpi 2
+        (grp 1), char (grp 2)
+
+let newPlants () = Array.init (1 + (2*maxPot)) (fun _ -> '.')
+
+let getPlant (plants:char[]) i =
+    plants.[i+maxPot]
+
+let getNear (plants:char[]) (i:int) :string =
+    let start = i+maxPot-2
+    let near = plants.[start..(start+4)] 
+    near |> String
+
+let setPlant (plants:char[]) i alive =
+    plants.[i+maxPot] <- alive
+
+let plantsValue plants =
+    plants
+    |> Seq.mapi (fun i havePlant -> if havePlant = plant then i - maxPot else 0)
+    |> Seq.sum
+
+let transform transforms plants i =
+    let near  = (getNear plants i)
+    match Set.contains near transforms with
+    | true -> plant
+    | false -> noPlant
+
+let newGeneration transforms plants size =
+    let newPlants = newPlants ()
+    [-size..size]
+    |> Seq.iter (fun i ->
+        setPlant newPlants i (transform transforms plants i))
+    newPlants
     
 let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
-
+    let lines = input |> toLines
+    let initial = parseInitial lines.[0]
+    let transforms = 
+        lines.[2..] 
+        |> Seq.map parseTansforms 
+        |> Seq.filter (fun (_,havePlant) -> havePlant = plant)
+        |> Seq.map fst
+        |> Set
+    let plants = newPlants ()
+    initial
+    |> Seq.iteri (fun i havePlant -> setPlant plants i havePlant)
+    //(print (plants.[180..220] |> String));
+    let x = 
+        (plants, [1..20])
+        ||> Seq.fold (fun plants _ -> 
+            let newPlants = newGeneration transforms plants 198
+            (print (newPlants.[140..260] |> String));
+            newPlants)
+    
+    plantsValue x
 
 
 //*)
