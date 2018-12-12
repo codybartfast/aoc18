@@ -26,7 +26,7 @@ let filterCount predicate = Seq.filter predicate >> Seq.length
 let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
-let maxPot = 200
+let maxPot = 10000
 let plant = '#'
 let noPlant = '.'
 
@@ -60,6 +60,16 @@ let plantsValue plants =
     |> Seq.mapi (fun i havePlant -> if havePlant = plant then i - maxPot else 0)
     |> Seq.sum
 
+let checkBounds (plants :char[]) =
+    let s = plants.Length
+    if plants.[2] = noPlant
+        && plants.[s-3] = noPlant
+        then ()
+        else failwith "Pot Overflow Exception"
+
+////////////////
+
+
 let transform transforms plants i =
     let near  = (getNear plants i)
     match Set.contains near transforms with
@@ -86,14 +96,20 @@ let Part1 (input : string) =  // "result1" (*
     initial
     |> Seq.iteri (fun i havePlant -> setPlant plants i havePlant)
     //(print (plants.[180..220] |> String));
-    let x = 
-        (plants, [1..20])
+    let plants100 = 
+        (plants, [1..100])
         ||> Seq.fold (fun plants _ -> 
-            let newPlants = newGeneration transforms plants 198
-            (print (newPlants.[140..260] |> String));
+            //let oldValue = (plantsValue plants)
+            let newPlants = newGeneration transforms plants (maxPot-2)
+            checkBounds newPlants
+            //let newValue = (plantsValue newPlants)
+            //printfn "old:%O, new:%O, diff:%O" oldValue newValue (newValue - oldValue)
+            (print (newPlants.[(maxPot-10)..(maxPot+70)] |> String));
             newPlants)
-    
-    plantsValue x
+    let value100 = plantsValue plants100 |> int64
+    let count100 = plants100 |> Seq.sumBy(function |'.' -> 0L| plant -> 1L)
+    count100 
+    ((50_000_000_000L - 100L) * (print count100)) + (print value100)
 
 
 //*)
