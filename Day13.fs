@@ -114,7 +114,10 @@ let evalPoint (railway :Railway) (x,y) =
     then 
         railway.[newX,newY] <- (fst target, (newDir, newTurn, true))
         railway
-    else failwith (sprintf "Crash! (%O,%O)" newX newY)
+    else 
+        railway.[newX,newY] <- (fst target, (NoCart, Left, false))
+        railway
+        
 
 let enumCoords railway =
     seq{ for y in Array2D.base2 railway .. -1 + Array2D.length2 railway do 
@@ -129,9 +132,22 @@ let clearMovedFlag (railway :Railway) =
         else ())
     railway
 
+let oneLeft (railway :Railway) =
+    let carts = 
+        enumCoords railway
+        |> Seq.filter (fun (x,y) ->
+            let (track, (dir, turn, moved)) = railway.[x,y]
+            dir <> NoCart)
+        |> List.ofSeq
+    let count = carts.Length
+    if count > 1 then None
+    else
+    carts
+    |> List.exactlyOne
+    |> Some
+
 let evalRailway railway =
     let coords = enumCoords railway
-        
     (railway, coords) 
     ||> Seq.fold (fun railway coord ->
         let newRailway = evalPoint railway coord
@@ -140,11 +156,12 @@ let evalRailway railway =
 
 let Part1 (input : string) =  // "result1" (*
     let railway = parseInput input
-    let rec chooChoo () =    
+    let rec chooChoo railway =    
         //display railway
-        evalRailway railway |> ignore
-        chooChoo ()
-    chooChoo ()
+        match oneLeft railway with
+        | None -> chooChoo (evalRailway railway)
+        | Some (x,y) -> (x,y)
+    chooChoo railway
 
 //*)
 
