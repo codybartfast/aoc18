@@ -1,103 +1,90 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/LzH9XaNqhGE4ZmW4ENWEUgKCChO3J4EDrf8y_Kbgr8g/data.html *)
 
 module Day14
 
-// #nowarn "0025"
+#nowarn "0025"
 
 open System
-open System.Text.RegularExpressions
-open System.Collections.Generic
-
-let toLines (text:string) = 
-    text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
-    |> List.ofArray
-let groupValue (m:Match) (i:int) = m.Groups.[i].Value
-let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let rec repeat item = seq{ yield item; yield! repeat item }
-let NL = System.Environment.NewLine
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
-let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = 
-    BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-type Board = ((int[] * int) * (int * int))
+type Chart = ((int[] * int) * (int * int))
 
-let getBoard improveCount =
-    let recipies = Array.init (improveCount + 11) (fun i -> -1)
-    recipies.[0] <- 3
-    recipies.[1] <- 7
-    ((recipies, 2), (0,1))
+let newChart () =
+    let scores = Array.zeroCreate 1024
+    scores.[0] <- 3
+    scores.[1] <- 7
+    ((scores, 2), (0, 1))
 
-let getDigits quality =
-    match quality / 10 with
-    | 0 -> [|quality|]
-    | 1 -> [|1; quality % 10|]
-    | _ -> failwith "oops"
+let inline getDigits quality =
+    match quality < 10 with
+    | true -> None, quality
+    | false -> Some 1, quality % 10
 
-let createRecipes (board : Board) = 
-    let ((recipies, size), (elf1, elf2)) = board
-    let (quality1, quality2) = recipies.[elf1], recipies.[elf2]
-    let digits  = getDigits (quality1 + quality2)
+let inline addNextRecipes (chart : Chart) = 
+    let (scores, size), (elf1, elf2) = chart
+    let scores =
+        if size + 2 >= scores.Length then
+            let bigger = Array.zeroCreate (scores.Length * 2)
+            Array.blit scores 0 bigger 0 size
+            bigger
+        else scores
+    let size =           
+        match getDigits (scores.[elf1] + scores.[elf2]) with
+        | None, quality -> 
+            scores.[size] <- quality
+            size + 1
+        | Some 1, quality -> 
+            scores.[size] <- 1
+            scores.[size + 1] <- quality
+            size + 2
+    let moveElf elf = (1 + (elf + scores.[elf])) % (size)
+    ((scores, size), (moveElf elf1, moveElf elf2))
 
-    recipies.[size] <- digits.[0]
-    let newSize =
-        match digits.Length with
-        | 1 -> size + 1
-        | 2 -> recipies.[size + 1] <- digits.[1]; size + 2
-        | _ -> failwith "oops"
-    
-    let moveElf elf = (1 + (elf + recipies.[elf])) % newSize
-    ((recipies, newSize), (moveElf elf1, moveElf elf2))
-
-let rec createRecipesTo targetSize (board : Board) =
-    let ((_, size), _) = board
-    match size < targetSize with
-    | true -> createRecipesTo targetSize (createRecipes board)
-    | false -> board
+let rec createRecipes chart =
+    seq{yield chart
+        yield! createRecipes (addNextRecipes chart)}
 
 let Part1 (input : string) =  
-     let threshold = int input        
-     let board = createRecipesTo (threshold + 10) (getBoard threshold)
-     let ((recipes, _), _)  = board
-     let ten = recipes.[threshold..(threshold+9)]
-     ten |> Seq.map(fun i -> i.ToString()) |> String.concat ""   
+    let threshold = int input        
+    let ((scores, _), _) = 
+        createRecipes (newChart ())
+        |> Seq.find (fun ((_, size), _) -> size >= threshold + 10)
+    let result = 
+        scores.[threshold .. (threshold + 9)]
+        |> Seq.map(fun i -> i.ToString()) |> String.concat ""   
+    result
 
 (* ================ Part B ================ *)
+
 let cookieDigits cookie =
     let rec handleLeast number digits =
         match number > 0 with
         | false -> digits
         | true ->
             handleLeast (number / 10) ((number % 10)::digits)
-    handleLeast cookie [] 
+    handleLeast cookie [] |> Array.ofList
 
-let findCookie cookieNum (board : Board) =
-    let cookie = cookieDigits cookieNum
-    let ((recipes, size), _) = board
-    let last = size - cookie.Length
-    let rec check start =
-        if start > last then None
-        else 
-            let found = 
-                [0..(cookie.Length - 1)]
-                |> Seq.forall (fun i -> cookie.[i] = recipes.[start + i])
-            if found then Some start else check (start + 1)
-    check 0
+let inline isCookie cookie scores idx =
+    let cSpan = ReadOnlySpan(cookie)
+    let span = ReadOnlySpan(scores, idx, cookie.Length)
+    cSpan.SequenceEqual(span)
 
-let Part2 result1 (input : string) = // "result2" (*
-     let cookie = int input        
-     let size = 1_000_000_00
-     let board = createRecipesTo (size) (getBoard size)
-     findCookie cookie board
-
-//*)
+let Part2 result1 (input : string) = 
+     let cookieNum = int input
+     let cookie = cookieDigits cookieNum
+     let firstDigit = cookie.[0]
+     let cookieSize = cookie.Length
+     
+     createRecipes (newChart ())
+     |> Seq.skip (cookieSize + 1)
+     |> Seq.find (fun ((scores, size), _) ->
+        let idx1 = size - (cookieSize + 1)
+        let idx2 = size - cookieSize
+        ((scores.[idx1] = firstDigit && isCookie cookie scores idx1)
+            || (scores.[idx2] = firstDigit && isCookie cookie scores idx2)))
+     |> fun ((scores, size), _ ) ->
+            let idx = size - (cookieSize + 1)
+            match isCookie cookie scores idx with
+            | true -> idx
+            | false -> idx + 1
