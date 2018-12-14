@@ -65,25 +65,39 @@ let rec createRecipesTo targetSize (board : Board) =
     | true -> createRecipesTo targetSize (createRecipes board)
     | false -> board
 
-let Part1 (input : string) =  // "result1" (*
+let Part1 (input : string) =  
      let threshold = int input        
-     //let threshold = 2018
      let board = createRecipesTo (threshold + 10) (getBoard threshold)
      let ((recipes, _), _)  = board
      let ten = recipes.[threshold..(threshold+9)]
-     ten |> Seq.map(fun i -> i.ToString()) |> String.concat ""
-
-
-
-//*)
-
-    
+     ten |> Seq.map(fun i -> i.ToString()) |> String.concat ""   
 
 (* ================ Part B ================ *)
+let cookieDigits cookie =
+    let rec handleLeast number digits =
+        match number > 0 with
+        | false -> digits
+        | true ->
+            handleLeast (number / 10) ((number % 10)::digits)
+    handleLeast cookie [] 
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let findCookie cookieNum (board : Board) =
+    let cookie = cookieDigits cookieNum
+    let ((recipes, size), _) = board
+    let last = size - cookie.Length
+    let rec check start =
+        if start > last then None
+        else 
+            let found = 
+                [0..(cookie.Length - 1)]
+                |> Seq.forall (fun i -> cookie.[i] = recipes.[start + i])
+            if found then Some start else check (start + 1)
+    check 0
 
-
+let Part2 result1 (input : string) = // "result2" (*
+     let cookie = int input        
+     let size = 1_000_000_00
+     let board = createRecipesTo (size) (getBoard size)
+     findCookie cookie board
 
 //*)
