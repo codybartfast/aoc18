@@ -30,15 +30,48 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
-    >> fun mtch ->
-        let grp idx = groupValue mtch idx
-        let grpi = grp >> int
-        grpi 1, grpi 2
+type Board = ((int[] * int) * (int * int))
+
+let getBoard improveCount =
+    let recipies = Array.init (improveCount + 11) (fun i -> -1)
+    recipies.[0] <- 3
+    recipies.[1] <- 7
+    ((recipies, 2), (0,1))
+
+let getDigits quality =
+    match quality / 10 with
+    | 0 -> [|quality|]
+    | 1 -> [|1; quality % 10|]
+    | _ -> failwith "oops"
+
+let createRecipes (board : Board) = 
+    let ((recipies, size), (elf1, elf2)) = board
+    let (quality1, quality2) = recipies.[elf1], recipies.[elf2]
+    let digits  = getDigits (quality1 + quality2)
+
+    recipies.[size] <- digits.[0]
+    let newSize =
+        match digits.Length with
+        | 1 -> size + 1
+        | 2 -> recipies.[size + 1] <- digits.[1]; size + 2
+        | _ -> failwith "oops"
     
+    let moveElf elf = (1 + (elf + recipies.[elf])) % newSize
+    ((recipies, newSize), (moveElf elf1, moveElf elf2))
+
+let rec createRecipesTo targetSize (board : Board) =
+    let ((_, size), _) = board
+    match size < targetSize with
+    | true -> createRecipesTo targetSize (createRecipes board)
+    | false -> board
+
 let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
+     let threshold = int input        
+     //let threshold = 2018
+     let board = createRecipesTo (threshold + 10) (getBoard threshold)
+     let ((recipes, _), _)  = board
+     let ten = recipes.[threshold..(threshold+9)]
+     ten |> Seq.map(fun i -> i.ToString()) |> String.concat ""
 
 
 
