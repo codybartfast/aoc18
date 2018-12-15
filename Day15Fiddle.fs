@@ -1,12 +1,15 @@
 ﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
 
-module Day15
+module Day15Fiddle
 
 // #nowarn "0025"
 
 open System
 open System.Text.RegularExpressions
-
+open System.Collections.Generic
+open System.Drawing
+open System.IO
+open System.Linq
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
@@ -38,8 +41,6 @@ type Board = Square[,]
 type Game = Board * int * bool
 
 (* ================ Part A ================ *) 
-
-let startAP = 3
 let startHP = 200
 
 let parseLine hp lineNo line =
@@ -78,15 +79,19 @@ let toSequence array2D =
     |> Seq.map (fun (x, y) -> ((x,y), array2D.[x,y]))
 
 let displaySquare = function
-      | Wall -> '#'
-      | Empty -> '.'
-      | Unit (_, kind, _) -> match kind with Elf -> 'E' | _ -> 'G'
+      | Wall -> "████"
+      | Empty -> "    "
+      | Unit (_, kind, (_, hp)) -> 
+        match kind with 
+        |Elf -> "E"+hp.ToString().PadLeft(3)
+        |Goblin -> "G"+hp.ToString().PadLeft(3)
+
 
 let display (board : Board) = 
     board
     |> Array2D.map displaySquare
     |> toRows
-    |> Array.map toString
+    |> Array.map (String.concat "")
     |> (String.concat "\n")
 
 let findUnitLocations (board:Square[,])  =
@@ -98,22 +103,31 @@ let findUnitLocations (board:Square[,])  =
         | _ -> None)
     |> List.ofSeq
 
-let countEnemies kind board =
+let getEnemies kind board = 
     board
     |> findUnitLocations
-    |> Seq.map snd
-    |> Seq.sumBy(function (_, other ,_) when other <> kind -> 1| _ -> 0)
+    |> List.filter (snd >> (fun (_, other ,_) -> other <> kind))
+
+let countEnemies kind board =
+    getEnemies kind board
+    |> Seq.length
 
 let hasEnemies board ((_, (_,kind,_)):UnitLocation) =
     countEnemies kind board > 0
 
 let countElves = countEnemies Goblin
+
+let distance (x,y) (x',y') = abs (x - x') + abs (y - y')
+
+let areAdjacent (x,y) (x',y') = 
+    distance (x,y) (x',y') = 1
+
 let getAdjacent (board:Board) (x,y) = 
      [  
         ((x,y-1), board.[x,y-1]); 
         ((x-1,y), board.[x-1,y]); 
         ((x+1,y), board.[x+1,y]);
-        ((x,y+1), board.[x,y+1]); ]
+        ((x,y+1), board.[x,y+1]);]
 
 let adjacentEnemies (board:Board) loc kind =
     getAdjacent board loc
@@ -131,16 +145,17 @@ let adjecentEnemy (board:Board) ((loc, unit):UnitLocation) : UnitLocation option
     | [] -> None
     | _ -> targets |> Seq.sortBy (fun ((x,y), (_, _,(_,hp))) -> (hp,y,x)) |> Seq.head |> Some
 
-let adjecentEmpty (board:Board) loc =
+let adjacentEmpty (board:Board) loc =
     getAdjacent board loc
     |> Seq.choose(fun (loc, square) ->
         match square with
         | Empty -> Some loc
         | _ -> None)
  
+ 
 let extendPath (board:Board) (been:Set<Location>) (path:Location list) =
     let nexts = 
-        adjecentEmpty board path.Head
+        adjacentEmpty board path.Head
         |> Seq.filter (fun loc -> not (been.Contains loc))
         |> List.ofSeq
     let newBeen = Set.union been (Set nexts)
@@ -154,6 +169,7 @@ let extendPaths board (been:Set<Location>) (paths:seq<Location list>) =
         ||> Seq.mapFold (extendPath board)
     (newPathsSeq |> Seq.collect id, been)
 
+
 let rec allPaths board (loc : int*int) =
     let b = Set [loc]
     let p = seq{yield [loc]}
@@ -164,20 +180,65 @@ let rec allPaths board (loc : int*int) =
         | true -> None
         | false -> Some (newPaths, (newBeen, newPaths)))
     |> Seq.collect id
+    //|> List.ofSeq ///////////
 
+let enemyRanges board kind =
+    let enemyRange (x,y) =
+        [(1, (x, y-1)); (2, (x-1,y)); (3, (x+1,y)); (4, (x,y+1)) ]    
+    getEnemies board kind
+    |> List.collect (fst >>(enemyRange))
+   
 let findNextLocation (board:Board) ((loc, unit):UnitLocation) : (int*int) option =
-    let allPaths = allPaths board loc
-    let pathToEnemy =
-        allPaths
-        |> Seq.tryPick (fun path -> 
+    //printfn "%s" (display board)
+    let allPathsFromUnit = allPaths board loc |> List.ofSeq
+    let pathsToEnemy =
+        allPathsFromUnit
+        |> Seq.choose (fun path -> 
             let loc = path.Head
             let test = (loc, unit)
             match adjecentEnemy board test with
             | Some _ -> Some path
             | _ -> None)
-    match pathToEnemy with
-    | None -> None
-    | Some path -> path |> List.rev |> List.tail |> List.head |> Some 
+        |> List.ofSeq
+    if pathsToEnemy.IsEmpty then None else
+    let nearest = 
+        pathsToEnemy
+        |> List.groupBy (List.length)
+        |> List.sortBy fst
+        |> List.head
+        |> snd
+    let chosenLoc = 
+        nearest
+        |> List.groupBy (fun path -> 
+            let (x,y) = path.Head
+            (y,x))
+        |> List.sortBy fst
+        |> List.head
+        |> snd
+        |> List.exactlyOne
+        |> List.head
+
+    if areAdjacent loc chosenLoc then Some chosenLoc else
+    let allPathsFromChosen = allPaths board chosenLoc |> List.ofSeq
+    let potentialStarts = adjacentEmpty board loc |> Set
+    
+    let shortestFrom =
+        allPathsFromChosen
+        |> List.filter (fun path -> 
+            potentialStarts.Contains path.Head)
+        |> List.groupBy (List.length)
+        |> List.sortBy fst
+        |> List.head
+        |> snd
+    let startChoices =     
+        shortestFrom
+        |> List.map List.head
+    if startChoices.Length > 1 then printf "" else printf ""
+    let start =
+        startChoices
+        |> Seq.sortBy (fun (x,y) -> (y,x))
+        |> Seq.head
+    Some start
 
 let fight (board:Board) ((aLoc,(_, aKind,(aAP, aHP))):UnitLocation) ((dLoc,(dId, dKind,(dAP, dHP))):UnitLocation) : Board =
     let dHP' = dHP - aAP
@@ -208,8 +269,12 @@ let engageUnit (board:Board, prevSawAction) (((x,y), _) : UnitLocation) : (Board
             | None -> board, (hasEnemies board unitLoc)
     | _ -> board, prevSawAction
 
+    
 let playRound (board:Board, round, _seenAction) =
     let unitLocations = findUnitLocations board 
+    //let info = unitLocations |> List.map (fun (loc, (_, kind, (_,hp))) -> (kind, hp))
+    //printfn "\n%O" (display board) 
+    ////Console.ReadKey () |> ignore    /////////////////////////////////////////////////
     let board, sawAction = 
         ((board, false), unitLocations)
         ||> List.fold engageUnit
@@ -220,9 +285,12 @@ let battle board =
     (board, 0, false)
     |> Seq.unfold playRound
 
-let Part1 (input : string) =
-    let board = parseInput 3 input
+let Part1 (input : string) =  "result1" (*
+    let board = parseInput 3 input ////////////////////////////
 
+    printfn "%O" (display board)
+    printfn ""
+            
     let board, rounds, _ = 
         battle board
         |> Seq.takeWhile (fun (_, _, action) -> action)    
@@ -233,13 +301,18 @@ let Part1 (input : string) =
         survivors |> Seq.sumBy (function (_,_,(_, hp)) -> hp | _ -> 0)
 
     (printfn "%O\n%O x %O" (display board) rounds hps)
+ 
     hps * (rounds)
+//*)
+
+    
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =
+let Part2 result1 (input : string) = // "result2" (*
+    //if true then 0 else
     let (hp, board, rounds) =
-        seq{4..Int32.MaxValue}
+        seq{15..Int32.MaxValue}
         |> Seq.pick(fun hp ->
             let board = parseInput hp input
             let elfCount = countElves board
@@ -259,5 +332,9 @@ let Part2 result1 (input : string) =
     let hps = 
         survivors |> Seq.sumBy (function (_,_,(_, hp)) -> hp | _ -> 0)
 
-    (printfn "%O\n%O - %O x %O" (display board) hp rounds hps)
+    printfn "%O" (display board)
+    (printfn "(%O x %O)" rounds hps)
+
     hps * (rounds)
+
+//*)
