@@ -83,17 +83,17 @@ let opNames : Map<string,Operation> =
         ("eqri", (fun reg A B C -> set reg C ((get reg A = B) |> toInt) ));
         ("eqrr", (fun reg A B C -> set reg C ((get reg A = get reg B) |> toInt) )); ]
 
-let consistent (capture:Sample) (operation:Operation) =
-    let (Sample ((Reg before), instr, after)) = capture
+let consistent (sample:Sample) (operation:Operation) =
+    let (Sample ((Reg before), instr, after)) = sample
     let (Inst (_, A, B, C)) = instr
     
     let expected = operation (Array.copy before |> Reg) A B C
     expected = after
 
-let findConsistent opNames capture  =
+let findConsistent opNames sample  =
     opNames
     |> Map.toSeq
-    |> Seq.filter(fun (_,op) -> consistent capture op)
+    |> Seq.filter(fun (_,op) -> consistent sample op)
     
 let example () = 
     Sample ((Reg [|3; 2; 1; 1|]), Inst (9, 2, 1, 2), (Reg [|3; 2; 2; 1|]))
@@ -101,20 +101,73 @@ let example () =
 let Part1 (input : string) =  // "result1" (*
     (splitInput input).[0]
     |> parsePart1
-    |> Seq.map (fun capture -> findConsistent opNames capture)
+    |> Seq.map (fun sample -> findConsistent opNames sample)
     |> Seq.map (Seq.length)
     |> Seq.filter ((<=) 3)
     |> Seq.length
 
 //*)
-
-    
+   
 
 (* ================ Part B ================ *)
+let parsePart2 input =
+    input
+    |> toLines
+    |> List.map (rxSplit " " >> Array.map int)
+    |> List.map (fun [|OP; A; B; C|] -> Inst (OP, A, B, C ))
+    
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let removeName potentialNames name =
+    potentialNames
+    |> List.map (fun (code, names) ->
+        (code, Set.remove name names))
+    |> List.filter (fun (_, names) -> not names.IsEmpty)
 
+let potentialNames samples =
+    samples
+    |> List.ofSeq
+    |> List.map( fun sample -> 
+        let (Sample (_, instruction, _)) = sample
+        let (Inst (code, _, _, _)) = instruction
+        (code, findConsistent opNames sample |> Seq.map fst |> Set))
+    |> List.groupBy fst
+    |> List.map (fun (code, seqOpMatches) -> 
+        let matchSets = seqOpMatches |> Seq.map snd
+        let potentialNames = matchSets |> Seq.reduce Set.intersect
+        (code, potentialNames))
 
+let codeMap potentialNames = 
+    let rec buildCodeMap (known:Map<int,string>) (potentialNames: (int*Set<string>) list) =
+        if List.isEmpty potentialNames then known 
+        else
+        let singles = 
+            potentialNames
+            |> List.filter (fun (_, names) ->
+                Set.count names = 1)
+        if singles.IsEmpty then failwith "oops"
+        let (code, name) = singles.Head |> fun (code, nameSet) -> (code, Seq.head nameSet)
+        let newMap = Map.add code name known
+        let potNames = removeName potentialNames name
+        buildCodeMap newMap potNames
+    buildCodeMap Map.empty potentialNames
 
-//*)
+let opCodes (codeMap : Map<int,string>) =
+    (fun code -> 
+        let name = codeMap.[code]
+        opNames.[name])
+
+let Part2 result1 (input : string) = 
+    let [|input1; input2|] = splitInput input
+
+    let samples = parsePart1 input1
+    let potentialNames = potentialNames samples
+    let codeMap = codeMap potentialNames
+    let opCode = opCodes codeMap
+
+    let instructions = parsePart2 input2
+    let registry = Reg [|0; 0; 0; 0|]
+    let apply reg (Inst (op, A, B, C)) = 
+        (opCode op) reg A B C
+    (registry, instructions)
+    ||> List.fold apply
+    |> fun (Reg values) -> values.[0]
