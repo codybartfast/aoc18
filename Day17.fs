@@ -1,34 +1,18 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/NLf5y4Wj_rG3tNmzlsmXhN9l2OOKaEKj90koSOVTgrg/data.html *)
 
 module Day17
 
-// #nowarn "0025"
+#nowarn "0025"
 
 open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
     |> List.ofArray
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = 
-    Regex.Split(str, pattern) 
-    |> Array.filter (String.IsNullOrWhiteSpace >> not) |> List.ofArray
-let rec repeat item = seq{ yield item; yield! repeat item }
-let NL = System.Environment.NewLine
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
 let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = 
-    BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
@@ -37,7 +21,6 @@ type Ground = Sand of Sand | Clay
 type Map = Ground[,]
 
 let parseLine  = 
-    //x=488, y=711..717
     rxMatch "(.)=(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
@@ -100,23 +83,23 @@ let get (map:Map) (x,y) =
     then Some map.[x,y] else None
 
 let wet (map:Map) (x,y) = map.[x,y] <- Sand Wet
+
 let soak (map:Map) (left, y) (right, y') =
     if y <> y' then failwith "oops!" else
     seq{left+1..right-1}
     |> Seq.iter (fun x -> map.[x,y] <- Sand Soaked)
 
-let exploreAccross map loc =  // increment left, right first?
-    //if get map loc <> Some (Sand Dry) then failwith "oops" else
+let exploreAccross map loc = 
     let rec explore loc getNext =
         match get map loc with
-        | None -> None
         | Some Clay -> Some (loc, Clay)
         | Some (Sand Dry) | Some (Sand Wet)->
             wet map loc
             match get map (below loc) with
-            | None | Some (Sand Wet) -> None
-            | Some Clay | Some (Sand Soaked) -> explore (getNext loc) getNext
+            | Some (Sand Wet) -> None
             | Some (Sand Dry) -> Some ((below loc), Sand Dry)
+            | Some Clay | Some (Sand Soaked) -> 
+                explore (getNext loc) getNext
         | Some ground -> None
     let left = explore loc left
     let right = explore loc right
@@ -127,55 +110,52 @@ let rec pour (map:Map) loc =
     if ground = Some (Sand Dry) then wet map loc
     let next = below loc
     match get map next with 
-    | None -> None
     | Some ground -> 
         match ground with
-        | Clay -> spread map loc
         | Sand Dry -> pour map next
-        | Sand Wet -> spread map loc
-        | Sand Soaked ->  spread map loc
+        | _ ->  spread map loc
+    | _ -> ()
+
 and spread (map:Map) loc =
     let left, right = exploreAccross map loc
+
+    match left with 
+    | Some (leftLoc, Sand Dry) -> pour map leftLoc 
+    | _ -> ()
+
+    match right with
+    | Some (rightLoc, Sand Dry) -> pour map rightLoc 
+    | _ -> ()
+
     match left, right with
-    | Some (leftLoc, Sand Dry), None -> pour map leftLoc
-    | None, Some (rightLoc, Sand Dry) -> pour map rightLoc
-    | None, _ | _, None -> None
     | Some (leftLoc, Clay), Some (rightLoc, Clay) ->
             soak map leftLoc rightLoc
             spread map (above loc)
-    | Some (leftLoc, Sand Dry), Some (_, Clay) -> pour map leftLoc
-    | Some (_, Clay), Some (rightLoc, Sand Dry) -> pour map rightLoc
-    | Some (leftLoc, Sand Dry), Some (rightLoc, Sand Dry) ->
-            pour map rightLoc |> ignore
-            pour map leftLoc
+    | _ -> ()
 
-let measure (map:Map) =
+let measure (map:Map) includeWet =
     seq{for y in seq{map.GetLowerBound(1)..map.GetUpperBound(1)} do
             for x in seq{map.GetLowerBound(0)..map.GetUpperBound(0)} do
                 yield (x,y)}
     |> Seq.map (fun (x,y) -> map.[x,y])
-    |> Seq.sumBy (function  Sand Soaked -> 1 | _ -> 0)
-            
+    |> Seq.sumBy (fun ground ->
+        match ground, includeWet with
+        | Sand Soaked, _ -> 1 
+        | Sand Wet, true -> 1
+        | _ -> 0)
 
-let Part1 (input : string) =  // "result1" (*
-    let map = 
-        input |> toLines |>  List.map parseLine |> buildMap
+let Part1 (input : string) =
+    let map = input |> toLines |>  List.map parseLine |> buildMap
     let startLoc = (500, map.GetLowerBound(1))
     pour map startLoc
-    display map
-    measure map
-
-
-
-//*)
-
-    
-
+    //display map
+    measure map true
+   
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
-
-
-
-//*)
+let Part2 result1 (input : string) = 
+    let map =input |> toLines |>  List.map parseLine |> buildMap
+    let startLoc = (500, map.GetLowerBound(1))
+    pour map startLoc
+    //display map
+    measure map false
