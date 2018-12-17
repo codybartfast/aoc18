@@ -154,7 +154,7 @@ let measure (map:Map) =
             for x in seq{map.GetLowerBound(0)..map.GetUpperBound(0)} do
                 yield (x,y)}
     |> Seq.map (fun (x,y) -> map.[x,y])
-    |> Seq.sumBy (function Sand Wet | Sand Soaked -> 1 | _ -> 0)
+    |> Seq.sumBy (function  Sand Soaked -> 1 | _ -> 0)
             
 
 let Part1 (input : string) =  // "result1" (*
