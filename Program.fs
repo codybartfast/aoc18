@@ -24,7 +24,7 @@ let main argv =
     
     sw.Start()
     let result1 = Part1 input1
-    printfn "%A" result1 
+    //printfn "%A" result1 
     printfn "%O" result1 
     showTime ()
 
