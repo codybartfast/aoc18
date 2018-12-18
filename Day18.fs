@@ -103,13 +103,14 @@ let resourceValue (area :Area) =
     let coords = seq{for y in seq{area.GetLowerBound(1)..area.GetUpperBound(1)} do
                       for x in seq{area.GetLowerBound(0)..area.GetUpperBound(0)} do
                         yield (x,y)}
-    ((0,0,0), coords)
-    ||> Seq.fold(fun (op,tr,lm) (x,y) ->
-        match area.[x,y] with
-        | Open -> (op+1,tr,lm)
-        | Trees -> (op,tr+1,lm)
-        | Lumber -> (op,tr,lm+1))
-    
+    let (_, tr, lm) =
+        ((0,0,0), coords)
+        ||> Seq.fold(fun (op,tr,lm) (x,y) ->
+            match area.[x,y] with
+            | Open -> (op+1,tr,lm)
+            | Trees -> (op,tr+1,lm)
+            | Lumber -> (op,tr,lm+1))
+    tr * lm
         
 let Part1 (input : string) =  // "result1" (*
     let area =
@@ -123,17 +124,55 @@ let Part1 (input : string) =  // "result1" (*
             Some (area, newArea))
 
     let tenth = Seq.item 10 areas
-    let (op,tr,lm) = resourceValue tenth
-    tr * lm
+    resourceValue tenth
+    
 //*)
 
     
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
-
-
-
-//*)
+let Part2 result1 (input : string) = // "result2" (*
+    let area =
+        input |> toLines |> List.toArray |> Array.map parseLine |> to2D
+    let areas () = 
+        area 
+        |> Seq.unfold (fun area ->
+            let newArea = minutePasses area
+            Some (area, newArea))
+    
+    let known_ = Map.empty
+    let known, prevMin_, repeatMin_ =
+        ((known_, 0, None), areas ())
+        ||> Seq.scan(fun (known, minute, _) area ->
+            let lastSaw = 
+                if known.ContainsKey area 
+                then
+                    let ls = Some known.[area]
+                    ls
+                else None
+            let newKnown = known.Add (area, minute)
+            let newMinute = minute + 1
+            (newKnown, newMinute, lastSaw))
+        |> Seq.pick (fun (known, minute, prevMinute) ->
+            match prevMinute with
+            | None -> None
+            | Some prev -> Some (known, prev, minute))
+    
+    let num = 625
+    let prevMin = prevMin_
+    let repeatMin = repeatMin_ - 1
+    //print (prevMin, repeatMin)
+    let freq = repeatMin - prevMin
+    let remaining =  num - repeatMin
+    let remaining =  1_000_000_000 - repeatMin
+    let offset = remaining % freq
+    let minute_ = prevMin + offset
+    let minute = if minute_ = prevMin then repeatMin else minute_
+    let area, _ = known |> Map.toSeq |> Seq.find (fun (area, min) -> min = minute)
+    let answer = resourceValue area 
+    answer
+    //let expectedArea = areas () |> Seq.item num
+    //let expected = expectedArea |> resourceValue
+    //(expected, answer)
+//*)     7
