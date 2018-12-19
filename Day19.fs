@@ -10,7 +10,7 @@ open System.Collections.Generic
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
-    |> List.ofArray
+    //|> List.ofArray
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
 let rxMatches pattern str = Regex.Matches(str, pattern)
@@ -32,22 +32,71 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
-let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
-    >> fun mtch ->
+open Day16
+
+//type Registers = Reg of int[]
+type Instruction = Inst of string * int * int * int
+//type Operation = Registers -> int -> int -> int -> Registers
+type IP = IP of int
+type IPReg = IPReg of int
+type State = State of (IP * IPReg * Registers)
+
+let parseLine line : Instruction = 
+    line
+    |> rxMatch "([a-z]+) (\d+) (\d+) (\d+)" 
+    |> fun mtch ->
         let grp idx = groupValue mtch idx
         let grpi = grp >> int
-        grpi 1, grpi 2
+        Inst (grp 1, grpi 2, grpi 3, grpi 4)
+
+let register size = Array.zeroCreate size |> Reg
+
+let outOfBounds (program:Instruction[]) (IP ip:IP) =
+    ip < 0 || ip >= program.Length
+
+let setIpReg (state : State) =
+    let (State ((IP ip), (IPReg ipReg), reg)) = state
+    set reg ipReg ip |> ignore
+    state
+
+let readIpRegAndIncrement (state : State) =
+    let (State ((IP ip), (IPReg ipReg), reg)) = state
+    let newIP = IP (1 + get reg ipReg)
+    State (newIP, IPReg ipReg, reg)
+
+let apply reg (Inst (opName, A, B, C)) = 
+    let after = opNames.[opName] reg A B C
+    after
+
+let tick (program : Instruction []) (state:State) : State option =
+    let (State ((IP ip), (IPReg ipReg), reg)) = state
+    if outOfBounds program (IP ip) then None else
+    
+    setIpReg state |> ignore
+    apply reg program.[ip] |> ignore
+    let newState = readIpRegAndIncrement state
+    Some newState
     
 let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
-
-
+    let program = input |> toLines |> Array.ofList |> Array.map parseLine
+    
+    let initial = State (IP 0, IPReg 3, register 6)
+    
+    initial 
+    |> Seq.unfold (fun state ->
+        let newState = tick program state
+        match newState with
+        | None -> None
+        | Some newState -> Some (newState, newState))
+    // List.ofSeq
+    |> Seq.last
+    |> fun (State (_, _, Reg registers)) -> registers.[0]
+    
 
 //*)
 
     
-
+     
 (* ================ Part B ================ *)
 
 let Part2 result1 (input : string) =  "result2" (*
