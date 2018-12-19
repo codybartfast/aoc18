@@ -28,7 +28,7 @@ let toHex =
 let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
 let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
 let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
+let print obj = (printfn "%A" obj); obj
 
 (* ================ Part A ================ *) 
 
@@ -77,10 +77,13 @@ let tick (program : Instruction []) (state:State) : State option =
     let newState = readIpRegAndIncrement state
     Some newState
     
-let Part1 (input : string) =  // "result1" (*
-    let program = input |> toLines |> Array.ofList |> Array.map parseLine
+let Part1 (input : string) =  "result1" (*
+    let program = input |> toLines |> List.skip 1 |> Array.ofList |> Array.map parseLine
     
-    let initial = State (IP 0, IPReg 3, register 6)
+    let reg = register 6
+    set reg 0 1
+
+    let initial = State (IP 0, IPReg 3, reg)
     
     initial 
     |> Seq.unfold (fun state ->
@@ -88,7 +91,11 @@ let Part1 (input : string) =  // "result1" (*
         match newState with
         | None -> None
         | Some newState -> Some (newState, newState))
-    // List.ofSeq
+    |> Seq.map (fun state -> 
+        // Console.ReadKey();
+        let (State (_, _, Reg reg)) = state
+        print (state)
+        state)
     |> Seq.last
     |> fun (State (_, _, Reg registers)) -> registers.[0]
     
@@ -99,9 +106,12 @@ let Part1 (input : string) =  // "result1" (*
      
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
-
-
+let Part2 result1 (input : string) = // "result2" (*
+    // 2, 3, 7, 251221
+    [   1;
+        2; 3; 7; 251221;
+        2*3; 2*7; 2*251221; 3*7; 3*251221; 7*251221;
+        2*3*7; 2*3*251221; 2*7*251221; 3*7*251221;
+        10551282 ] |> List.sum
 
 //*)
