@@ -170,6 +170,12 @@ let maxDoors map =
     |> Seq.map (fun (_, {Doors=doors}) -> doors)
     |> Seq.max 
 
+let thousands map =
+    map
+    |> Map.toSeq
+    |> Seq.filter (fun (_, {Kind=kind; Doors=doors}) -> kind=Room && doors >= 1000)
+    |> Seq.length
+
 let Part1 (input : string) =  // "result1" (*
     let regex = input |> toChars |> List.ofArray
     let map = Map.empty
@@ -178,7 +184,7 @@ let Part1 (input : string) =  // "result1" (*
     let  (_, _, _, map) = build (regex.Tail, origin, [origin], (map.Add ((0,0), origin)))
     let map = finish map
     display map
-    maxDoors map
+    thousands map
 //*)
 
     
