@@ -74,7 +74,7 @@ let run (program : Instruction[]) registers ipReg =
         tick reg (reg.[ipReg] + 1)
     tick registers 0
 
-let Part1 (input : string) = 
+let Part1 (input : string) = "result1" (*
     let (program, ipReg) = parse input 
     let reg = (Array.zeroCreate 6)
     reg.[0] <- 47965 
@@ -88,9 +88,34 @@ let Part1 (input : string) =
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let fun6 (r4:int) (r5:int) vals =
+    let r5 = r4 ||| 65536
+    let r4 = 1765573 
+    r4, r5, vals
+
+let fun28 (r4:int) (r5:int) (vals:Set<int>) =
+    if vals.Contains r4 
+        then failwith "We're going in circles ;-)"
+        else printfn "%A" r4
+    fun6 r4 r5 (Set.add r4 vals)
 
 
+let rec fun8 (r4:int) (r5:int) vals = 
+    let r1 = r5 &&& 255
+    //let r5s = div256 r5    
+    let r4s = r4 + r1
+    let r4ss = r4s &&& 16777215        // 10
+    let r4sss = r4ss * 65899           // 11
+    let r4ssss = r4sss &&& 16777215    // 12
+    let r4final, r5final, valss=
+        if 256 > r5 
+        then fun28 r4ssss r5 vals 
+        else r4ssss, (r5/256), vals
+    fun8 r4final r5final valss
 
-//*)
+let Part2 result1 (input : string) = // "result2" (*
+    let r4, r5 = 1765573, 65536
+    let vals = Set.empty
+    fun8 r4 r5 vals
+    
+
