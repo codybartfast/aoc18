@@ -1,32 +1,13 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/RBjS1GCJ-eLKtId1j8XamdAFh3m8ae6QuN-AV1hLWW8/data.html *)
 
 module Day15
 
-// #nowarn "0025"
-
 open System
-open System.Text.RegularExpressions
-
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
-    //|> List.ofArray
-let groupValue (m:Match) (i:int) = m.Groups.[i].Value
-let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
-let rxSplit pattern str = Regex.Split(str, pattern)
-let rec repeat item = seq{ yield item; yield! repeat item }
-let NL = System.Environment.NewLine
-let len (seq : seq<'a>) = Seq.length seq
 let toChars (str : string) = str.ToCharArray()
 let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = 
-    BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 type Kind = Elf | Goblin
 type Location = int*int
@@ -155,9 +136,7 @@ let extendPaths board (been:Set<Location>) (paths:seq<Location list>) =
     (newPathsSeq |> Seq.collect id, been)
 
 let rec allPaths board (loc : int*int) =
-    let b = Set [loc]
-    let p = seq{yield [loc]}
-    (b, p)
+    (Set [loc], seq{yield [loc]})
     |> Seq.unfold (fun (been, (prevPaths : seq<Location list>)) ->
         let (newPaths, newBeen) = extendPaths board been prevPaths
         match Seq.isEmpty newPaths with
