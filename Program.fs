@@ -12,7 +12,7 @@ let getInputFile name =
     Path.Combine(__SOURCE_DIRECTORY__, "inputs", name) + ".txt"
 let readText name = File.ReadAllText(getInputFile name)
 
-open Day22
+open Day22a
 let name = "day22"
 
 let text = readText name
@@ -36,5 +36,6 @@ let main argv =
     printfn "%O" result2
     showTime ()
 
+    Console.Write("done")
     Console.ReadKey() |> ignore
     0
