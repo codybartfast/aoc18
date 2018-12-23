@@ -33,16 +33,25 @@ let print obj = (printfn "%O" obj); obj
 (* ================ Part A ================ *) 
 
 let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
+    // pos=<24252823,1784286,56916822>, r=67997514
+    rxMatch "(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
         let grpi = grp >> int
-        grpi 1, grpi 2
+        (grpi 1, grpi 2, grpi 3), grpi 4
+
+let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
+
     
 let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
-
-
+    let bots = input |> toLines |> List.map parseLine
+    let strongest = bots |> List.sortBy (fun bot -> snd bot) |> List.last
+    let centre, radius = strongest
+    let inRange = bots |> List.filter (fun b -> 
+        let coord = fst b
+        let dist = distance centre coord 
+        dist <= radius)
+    inRange |> List.length
 
 //*)
 
@@ -50,9 +59,67 @@ let Part1 (input : string) =  // "result1" (*
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let getEdges bots =
+    let extremes nums =
+        Seq.min nums, Seq.max nums
+    let X = 
+        bots
+        |> Seq.map (fun ((x,_,_),_) -> x) |> extremes
+    let Y = 
+        bots
+        |> Seq.map (fun ((_,y,_),_) -> y) |> extremes
+    let Z = 
+        bots
+        |> Seq.map (fun ((_,_,z),_) -> z) |> extremes
+    (X, Y, Z)
 
+let rangeCount bots sample =
+    let inRange = 
+        bots 
+        |> Seq.filter (fun (coord, radius) -> 
+            let dist = distance sample coord 
+            dist <= radius)
+        |> Seq.length
+    inRange
+
+let checkAll low high bots =
+    let (x,y,z), (x',y',z') = low, high
+    let bests = 
+        [for z in [z..z'] do for y in [y..y'] do for x in [x..x'] do yield (x,y,z) ]
+        |> List.map (fun coord -> (coord, rangeCount bots coord))
+        |> List.groupBy (fun (coord, count) -> count)
+        |> Seq.maxBy fst
+        |> snd
+     
+    bests
+    |> List.map (fun (coord, _) -> (coord, distance coord (0,0,0)))
+    |> List.minBy (fun (coord, dist) -> dist)
+    //|> fst
+    //|> (rangeCount bots)
+
+let rec split low high bots =
+    if distance low high  < 100 then checkAll low high bots else
+    let (x,y,z), (x',y',z') = low, high
+    let xInt = (x'-x)/10
+    let yInt = (y'-y)/10
+    let zInt = (z'-z)/10
+    let xs = [x..xInt..(x'+xInt)]
+    let ys = [y..xInt..(y'+yInt)]
+    let zs = [z..xInt..(z'+zInt)]
+    let pick =
+        [for z in zs do for y in ys do for x in xs do yield (x,y,z)]
+        |> Seq.map (fun sample -> (sample, rangeCount bots sample))
+        |> Seq.maxBy(fun (_, count ) -> count)
+    let (px, py, pz) = fst (print pick)
+    let low = (px-(xInt*1), py-(yInt*1), pz-(zInt*1))
+    let high = (px+(xInt*1), py+(yInt*1), pz+(zInt*1))
+    split low high bots
+
+let Part2 result1 (input : string) = // "result2" (*
+    let bots = input |> toLines |> List.map parseLine
+    let (xMin, xMax), (yMin, yMax), (zMin, zMax) = getEdges bots
+    let lowCorn, highCorn = (xMin, yMin, zMin), (xMax, yMax, zMax)
+    split lowCorn highCorn bots
 
 
 //*)
