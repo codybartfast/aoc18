@@ -41,8 +41,7 @@ let parseLine  =
         (grpi 1, grpi 2, grpi 3), grpi 4
 
 let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
-
-    
+   
 let Part1 (input : string) =  // "result1" (*
     let bots = input |> toLines |> List.map parseLine
     let strongest = bots |> List.sortBy (fun bot -> snd bot) |> List.last
@@ -59,9 +58,26 @@ let Part1 (input : string) =  // "result1" (*
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let rangeCount bots loc =
+    bots 
+    |> Seq.filter (fun (cntr, rad) -> rad >= distance loc cntr)
+    |> Seq.length
 
-
+let Part2 result1 (input : string) = // "result2" (*
+    let bots = input |> toLines |> List.map parseLine
+    let corners =
+        bots |> List.collect (fun ((x,y,z), rad) ->
+            [ (x+rad,y,z); (x,y+rad,z); (x,y,z+rad);
+                (x-rad,y,z); (x,y-rad,z); (x,y,z-rad)] )
+    let bestCorners =
+        corners 
+        |> List.map (fun loc ->
+            (loc, rangeCount bots loc))
+        |> List.groupBy snd
+        |> List.maxBy fst
+        |> snd
+    bestCorners 
+        |> List.map (fun (loc, count)  -> ((loc, count), distance loc (0,0,0)))
+    
 
 //*)
