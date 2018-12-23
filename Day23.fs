@@ -33,16 +33,25 @@ let print obj = (printfn "%O" obj); obj
 (* ================ Part A ================ *) 
 
 let parseLine  = 
-    rxMatch "(-?\d+)\D+?(-?\d+)" 
+    // pos=<24252823,1784286,56916822>, r=67997514
+    rxMatch "(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
         let grpi = grp >> int
-        grpi 1, grpi 2
+        (grpi 1, grpi 2, grpi 3), grpi 4
+
+let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
+
     
 let Part1 (input : string) =  // "result1" (*
-    input |> toLines |> Seq.map parseLine
-
-
+    let bots = input |> toLines |> List.map parseLine
+    let strongest = bots |> List.sortBy (fun bot -> snd bot) |> List.last
+    let centre, radius = strongest
+    let inRange = bots |> List.filter (fun b -> 
+        let coord = fst b
+        let dist = distance centre coord 
+        dist <= radius)
+    inRange |> List.length
 
 //*)
 
