@@ -1,4 +1,4 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/Qckma-96sYFdqwA-KIM66DCWb1Of-7Odcp2jUa1pyXI/data.html *)
 
 module Day24
 
@@ -206,14 +206,12 @@ let boostImmune (armies : Armies) boost =
     armies.Add (immune, {army with Groups = groups})
 
 let Part2 result1 (input : string) = // "result2" (*
-    let boost, army = 
-        [43]
-        |> Seq.pick (fun boost ->
-            let armies = boostImmune (parse input) boost
-            let army = fight armies     
-            if army.Name = immune 
-                then Some (boost, army)
-                else None)
-    printfn "boost: %i" boost
-    unitCount army
+    [50..-1..0]
+    |> Seq.iter (fun boost ->
+        let armies = boostImmune (parse input) boost
+        let army = fight armies     
+        printfn 
+            "boost: %i, victor:%s, count: %i" 
+            boost army.Name (unitCount army))
+
 //*)
