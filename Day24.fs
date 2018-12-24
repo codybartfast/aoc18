@@ -156,7 +156,7 @@ let groupMap (groups: Group list) =
     |> List.map (fun grp -> grp.Id, grp)
     |> Map
 
-let rec fight (armies : Map<string,Army>) =
+let rec fight (armies : Map<string,Army>)  =
     let [(_, army1); (_, army2)] = Map.toList armies
 
     if army1.Groups.Count = 0 then army2 else
@@ -183,13 +183,37 @@ let Part1 (input : string) =  // "result1" (*
 
 //*)
 
-    
 
 (* ================ Part B ================ *)
+let immune = "Immune System"
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let unitCount army = 
+    army.Groups
+    |> Map.toSeq
+    |> Seq.map snd
+    |> Seq.map (fun grp -> grp.Count)
+    |> Seq.sum 
 
+let boostImmune (armies : Armies) boost =
+    let army = armies.[immune]
+    let groups  =
+        army.Groups
+        |> Map.toList
+        |> List.map snd
+        |> List.map (fun grp -> {grp with AD = grp.AD + boost})
+        |> List.map (fun grp -> grp.Id, grp)
+        |> Map
+    armies.Add (immune, {army with Groups = groups})
 
-
+let Part2 result1 (input : string) = // "result2" (*
+    let boost, army = 
+        [43]
+        |> Seq.pick (fun boost ->
+            let armies = boostImmune (parse input) boost
+            let army = fight armies     
+            if army.Name = immune 
+                then Some (boost, army)
+                else None)
+    printfn "boost: %i" boost
+    unitCount army
 //*)
