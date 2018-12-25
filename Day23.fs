@@ -7,6 +7,8 @@ module Day23
 open System
 open System.Text.RegularExpressions
 open System.Collections.Generic
+open System.Linq.Expressions
+open System.Xml
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
@@ -74,68 +76,39 @@ let getFurthest (cntr, _) corners =
     |> Seq.map (fun corn -> corn, distance cntr corn)
     |> Seq.maxBy snd
 
-let add (x,y,z) (x',y',z') = x+x',y+y',z+z'
-let mul m (x,y,z) = (x*m, y*m, z*m)    
-let div (x,y,z) d = (x/d, y/d, z/d)    
+let overlapDim (x1, y1) (x2, y2) (nx, ny) overlap =
+    let half = overlap / 2
+    let rmn = overlap % 2
+    let xDiff = (x2 - x1)
+    let yDiff = (y2 - y1)
+    let xCloser = abs xDiff < abs yDiff
+    let (xDelta, yDelta) =
+        if xCloser
+            then half, half+rmn
+            else half+rmn, half
+    let sx, sy = 
+        if xCloser 
+            then (nx - xDiff), (ny + xDiff)
+            else (nx + yDiff), (ny - yDiff)
+    let one = (nx+xDelta, ny+yDelta)
+    let two =
+        if xCloser 
+            then (sx-xDelta, sy+yDelta)
+            else (sx+xDelta, sy-yDelta)
+    [one; two]
 
-let A = (1,-1,1)
-let B = (1,1,-1)
-let C = (-1,1,1)
-
-let AB, BC, CA = (add A B), (add B C), (add C A)
-
-let toABC (x,y,z) =
-    let p1 = (mul x (1, 1, 0))
-    let p2 = (mul y (0, 1, 1))
-    let p3 = (mul z (1, 0, 1))
-    (add (add p1 p2) p3)
-
-let fromABC (a,b,c) =
-    let p1 = (mul a A)
-    let p2 = (mul b B)
-    let p3 = (mul c C)
-    (div (add (add p1 p2) p3) 2)
+let overlapCorners bot1 bot2 nearest =
+    let (cntr1,r1), (cntr2,r2) = bot1, bot2
+    let (x1,y1,z1) = cntr1
+    let (x2,y2,z2) = cntr2
+    let xn, yn, zn = nearest
+    let distance = distance cntr1 cntr2
+    let overlap = (r1 + r2) - distance
+    let corners = overlapDim (x1, y1) (x2, y2) (xn, yn) overlap
+    corners |> List.map (fun (x,y) -> (x,y,zn))
 
 
-
-let overlapCornersFromPoints bot1 bot2 near2 =
-    let (cntr1, rad1) = bot1
-    let (cntr2, rad2) = bot2
-    let reqdSteps = rad1 + rad2 - (distance cntr1 cntr2)
-
-    let (x1, y1, z1) = cntr1
-    let (x2, y2, z2) = cntr2
-
-    let stepX = if x2 >= x1 then 1 else -1
-    let stepY = if y2 >= y1 then 1 else -1
-    let stepZ = if z2 >= z1 then 1 else -1
-    let fullSteps = reqdSteps / 3
-
-    let nx, ny, nz = near2
-    []
-
-//let overlapCornersFromPoints myNearest theirNearest =
-//    let mx,my,mz = myNearest   
-//    let tx,ty,tz = theirNearest
-//    let myABC = toABC myNearest
-//    let theirABC = toABC theirNearest
-//    let ma,mb,mc = myABC   
-//    let ta,tb,tc = theirABC
-
-//    //let deltaA, deltaB, deltaC = (ma-ta, mb-tb, mc-tc)
-//    let deltaA, deltaB, deltaC = (mx-tx, my-ty, mz-tz)
-//    let vectors = [
-//        (deltaA, 0, 0); (0, deltaB, 0); (0, 0, deltaC)
-//        (0, deltaB, deltaC); (deltaA, 0, deltaC); (deltaA, deltaB, 0);
-//        //(deltaA, deltaB, deltaC)
-//        ]
-//    let abcCorners = 
-//        vectors |> List.map (add theirABC)
-//    abcCorners |> List.map fromABC
-//    //let other = (add theirABC (deltaA, 0, deltaC))
-//    //[myNearest; fromABC (other)]
-
-let overlapCorners bot1 corners1 bot2 =
+let consider bot1 bot2 =
     let nowt = []
     let _, rad = bot1
     if bot1 = bot2  then nowt else
@@ -144,40 +117,41 @@ let overlapCorners bot1 corners1 bot2 =
     if nDist > rad then nowt else
     let (_, fDist) = getFurthest bot1 corners2
     if fDist <= rad then nowt else
-    let (bot1Nearest, _) = getNearest bot2 corners1
-    overlapCornersFromPoints bot1 bot2 bot2Nearest 
+    corners2
 
 let pointsOfInterest allBots bot = seq{
     let corners = getRangeCorners bot
     yield! corners
     yield!
         allBots 
-        |> Seq.collect (overlapCorners bot corners)}
+        |> Seq.collect (consider bot)}
 
 let allPoi allBots =
     allBots
     |> Seq.collect (pointsOfInterest allBots)
 
+let test (cntr1, r1) (cntr2, r2) loc =
+    let actual = (r1 + r2) - ((distance cntr1 loc) + (distance cntr2 loc))
+    if actual < 0 || actual > 1 then failwith "oops"
+
 let Part2 result1 (input : string) = // "result2" (*
     let bots = input |> toLines |> List.map parseLine
-    let allCorners = bots |> Seq.collect getRangeCorners
-    let abcCorners = allCorners |> Seq.map toABC |> List.ofSeq
-    let allA = 
-        abcCorners
-        |> List.map (fun (a,_,_) -> a)
-        |> List.distinct
-    let allB = 
-        abcCorners
-        |> List.map (fun (_,b,_) -> b)
-        |> List.distinct
-    let allC = 
-        abcCorners
-        |> List.map (fun (_,_,c) -> c)
-        |> List.distinct
+    //allPoi bots |> Seq.length
+    let bot1 = bots.Item 0
+    let bot2 = bots.Item 5
     
-    seq{for a in allA do  for c in allC do yield (a,0,c)}
-    |> Seq.map fromABC
-    |> Seq.map (rangeCount bots)
-    |> Seq.max
+    //let bot1 = ((0,0,0), 10)
+    //let bot2 = ((5,11,0), 10)
+    //let bot1 = ((0,0,0), 10)
+    //let bot2 = ((2,15,0), 10)
+
+    let (nearest, _) = getNearest bot1 (getRangeCorners bot2)
+    let ocs = overlapCorners bot1 bot2 (print nearest)
+    printfn "---"
+    ocs |> List.iter(fun oc ->  test bot1 bot2 (print oc))
+   
+
+    
+
 
 //*)
