@@ -76,7 +76,11 @@ let getFurthest (cntr, _) corners =
     |> Seq.map (fun corn -> corn, distance cntr corn)
     |> Seq.maxBy snd
 
-let overlapDim (x1, y1) (x2, y2) (nx, ny) overlap =
+let overlapDim (x1, y1) (x2, y2) (xn, yn) (xm, ym) =
+    let dist (a,b) (c,d) = abs(a-c) + abs(b-d)
+    let rad = (dist (x1,y1) (xm,ym)) +  (dist (x2,y2) (xn,yn))
+    let cntrDist = dist (x1,y1) (x2,y2)
+    let overlap = rad - cntrDist
     let half = overlap / 2
     let rmn = overlap % 2
     let xDiff = (x2 - x1)
@@ -86,26 +90,43 @@ let overlapDim (x1, y1) (x2, y2) (nx, ny) overlap =
         if xCloser
             then half, half+rmn
             else half+rmn, half
+    let xSign = if xDiff = 0 then 1 else (xDiff/abs xDiff)
+    let ySign = if yDiff = 0 then 1 else (yDiff/abs yDiff)
+
+    let shift = if xCloser then abs xDiff else abs yDiff
+
     let sx, sy = 
         if xCloser 
-            then (nx - xDiff), (ny + xDiff)
-            else (nx + yDiff), (ny - yDiff)
-    let one = (nx+xDelta, ny+yDelta)
+                 // smaller    // bigger
+            then (xn - (shift * xSign)), (yn + (shift * ySign))
+            else (xn + (shift * xSign)), (yn - (shift * ySign))
+                 // bigger     // smaller
+    let one = (xn+(xDelta*xSign), yn+(yDelta*ySign))
     let two =
         if xCloser 
-            then (sx-xDelta, sy+yDelta)
-            else (sx+xDelta, sy-yDelta)
+            then (sx-(xDelta*xSign), sy+(yDelta*ySign))
+            else (sx+(xDelta*xSign), sy-(yDelta*ySign))
     [one; two]
 
-let overlapCorners bot1 bot2 nearest =
+let overlapCorners bot1 bot2 nearest myNearest =
     let (cntr1,r1), (cntr2,r2) = bot1, bot2
     let (x1,y1,z1) = cntr1
     let (x2,y2,z2) = cntr2
     let xn, yn, zn = nearest
+    let xm, ym, zm = myNearest
     let distance = distance cntr1 cntr2
     let overlap = (r1 + r2) - distance
-    let corners = overlapDim (x1, y1) (x2, y2) (xn, yn) overlap
-    corners |> List.map (fun (x,y) -> (x,y,zn))
+    let XYs = overlapDim (x1, y1) (x2, y2) (xn, yn) (xm, ym)
+    let YZs = overlapDim (y1, z1) (y2, z2) (yn, zn) (ym, zm)
+    let XZs = overlapDim (x1, z1) (x2, z2) (xn, zn) (xm, zm)
+    let xyCorners = XYs |> List.map (fun (x,y) -> (x,y,zn))
+    let yzCorners = YZs |> List.map (fun (y,z) -> (xn,y,z))
+    let xzCorners = XZs |> List.map (fun (x,z) -> (x,yn,z))
+    List.collect id [
+        xyCorners; 
+        yzCorners; 
+        //xzCorners
+        ] 
 
 
 let consider bot1 bot2 =
@@ -130,11 +151,13 @@ let allPoi allBots =
     allBots
     |> Seq.collect (pointsOfInterest allBots)
 
+let mutable count = 0
 let test (cntr1, r1) (cntr2, r2) loc =
+    count <- (print (count + 1))
     let actual = (r1 + r2) - ((distance cntr1 loc) + (distance cntr2 loc))
     if actual < 0 || actual > 1 then failwith "oops"
 
-let Part2 result1 (input : string) = // "result2" (*
+let Part2 result1 (input : string) = // "result2" 
     let bots = input |> toLines |> List.map parseLine
     //allPoi bots |> Seq.length
     let bot1 = bots.Item 0
@@ -143,10 +166,13 @@ let Part2 result1 (input : string) = // "result2" (*
     //let bot1 = ((0,0,0), 10)
     //let bot2 = ((5,11,0), 10)
     //let bot1 = ((0,0,0), 10)
-    //let bot2 = ((2,15,0), 10)
+    //let bot2 = ((15,-2,0), 10)
+    let bot1 = ((0,0,0), 10)
+    let bot2 = ((15,-2, 1), 10)
 
     let (nearest, _) = getNearest bot1 (getRangeCorners bot2)
-    let ocs = overlapCorners bot1 bot2 (print nearest)
+    let (myNearest, _) = getNearest bot2 (getRangeCorners bot1)
+    let ocs = overlapCorners bot1 bot2 (print nearest) myNearest
     printfn "---"
     ocs |> List.iter(fun oc ->  test bot1 bot2 (print oc))
    
@@ -154,4 +180,4 @@ let Part2 result1 (input : string) = // "result2" (*
     
 
 
-//*)
+//
