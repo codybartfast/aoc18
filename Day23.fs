@@ -76,11 +76,7 @@ let getFurthest (cntr, _) corners =
     |> Seq.map (fun corn -> corn, distance cntr corn)
     |> Seq.maxBy snd
 
-let overlapDim (x1, y1) (x2, y2) (xn, yn) (xm, ym) =
-    let dist (a,b) (c,d) = abs(a-c) + abs(b-d)
-    let rad = (dist (x1,y1) (xm,ym)) +  (dist (x2,y2) (xn,yn))
-    let cntrDist = dist (x1,y1) (x2,y2)
-    let overlap = rad - cntrDist
+let overlapDim (x1, y1) (x2, y2) (xn, yn) overlap =
     let half = overlap / 2
     let rmn = overlap % 2
     let xDiff = (x2 - x1)
@@ -108,17 +104,16 @@ let overlapDim (x1, y1) (x2, y2) (xn, yn) (xm, ym) =
             else (sx+(xDelta*xSign), sy-(yDelta*ySign))
     [one; two]
 
-let overlapCorners bot1 bot2 nearest myNearest =
+let overlapCorners bot1 bot2 nearest =
     let (cntr1,r1), (cntr2,r2) = bot1, bot2
     let (x1,y1,z1) = cntr1
     let (x2,y2,z2) = cntr2
     let xn, yn, zn = nearest
-    let xm, ym, zm = myNearest
     let distance = distance cntr1 cntr2
     let overlap = (r1 + r2) - distance
-    let XYs = overlapDim (x1, y1) (x2, y2) (xn, yn) (xm, ym)
-    let YZs = overlapDim (y1, z1) (y2, z2) (yn, zn) (ym, zm)
-    let XZs = overlapDim (x1, z1) (x2, z2) (xn, zn) (xm, zm)
+    let XYs = overlapDim (x1, y1) (x2, y2) (xn, yn) overlap
+    let YZs = overlapDim (y1, z1) (y2, z2) (yn, zn) overlap
+    let XZs = overlapDim (x1, z1) (x2, z2) (xn, zn) overlap
     let xyCorners = XYs |> List.map (fun (x,y) -> (x,y,zn))
     let yzCorners = YZs |> List.map (fun (y,z) -> (xn,y,z))
     let xzCorners = XZs |> List.map (fun (x,z) -> (x,yn,z))
@@ -165,14 +160,13 @@ let Part2 result1 (input : string) = // "result2"
     
     //let bot1 = ((0,0,0), 10)
     //let bot2 = ((5,11,0), 10)
-    //let bot1 = ((0,0,0), 10)
-    //let bot2 = ((15,-2,0), 10)
     let bot1 = ((0,0,0), 10)
-    let bot2 = ((15,-2, 1), 10)
+    let bot2 = ((15,-2,0), 10)
+    //let bot1 = ((0,0,0), 10)
+    //let bot2 = ((-2,0,0), 10)
 
     let (nearest, _) = getNearest bot1 (getRangeCorners bot2)
-    let (myNearest, _) = getNearest bot2 (getRangeCorners bot1)
-    let ocs = overlapCorners bot1 bot2 (print nearest) myNearest
+    let ocs = overlapCorners bot1 bot2 (print nearest)
     printfn "---"
     ocs |> List.iter(fun oc ->  test bot1 bot2 (print oc))
    
