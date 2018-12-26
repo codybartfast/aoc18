@@ -6,9 +6,7 @@ module Day23
 
 open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
-open System.Linq.Expressions
-open System.Xml
+
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
@@ -34,11 +32,19 @@ let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
 
+type Bot = {
+    Centre : int*int*int
+    Radius : int
+    Side1 : int
+    Side2 : int
+    BackSide1 : int
+    BackSide2 : int }
+
 let parseLine  = 
     rxMatch "(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
-        let grpi = grp >> int
+        let grpi = grp >> int64
         (grpi 1, grpi 2, grpi 3), grpi 4
 
 let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
@@ -55,123 +61,83 @@ let Part1 (input : string) =
 
 (* ================ Part B ================ *)
 
-type ABC = ABC of (int*int*int)
-
 let rangeCount bots loc =
     bots 
     |> Seq.filter (fun (cntr, rad) -> rad >= distance loc cntr)
     |> Seq.length
 
-let getRangeCorners ((x,y,z),r)  = 
-    [ (x+r,y,z); (x,y+r,z); (x,y,z+r);
-        (x-r,y,z); (x,y-r,z); (x,y,z-r)]    
+let leftSlope ((x,y),r) = (x-y)-r
+let rightSlope ((x,y), r) = (x-y)+r
+let leftBackslope ((x,y), r) = (x+y)-r
+let rightBackslope ((x,y), r) = (x+y)+r
 
-let getNearest (cntr, _) corners =
-    corners 
-    |> Seq.map (fun corn -> corn, distance cntr corn)
-    |> Seq.minBy snd
+//let slopeIntersects dmnd1 dmnd2 =
+//    let left1 = leftSlope dmnd1
+//    let right1 = rightSlope dmnd1
+//    let left2 = leftSlope dmnd2
+//    let right2 = rightSlope dmnd2
+//    let xxx = (left2 <= left1 && left1 <= right2)
+//                || (left1 <= left2 && left2 <= right1)
+//    xxx
+    
+//let backslopeIntersects dmnd1 dmnd2 =
+//    let left1 = leftBackslope dmnd1
+//    let right1 = rightBackslope dmnd1
+//    let left2 = leftBackslope dmnd2
+//    let right2 = rightBackslope dmnd2
+//    let xxx = (left2 <= left1 && left1 <= right2)
+//                || (left1 <= left2 && left2 <= right1)
+//    xxx
 
-let getFurthest (cntr, _) corners =
-    corners 
-    |> Seq.map (fun corn -> corn, distance cntr corn)
-    |> Seq.maxBy snd
+//let intersects dmnd1 dmnd2 = 
+//    slopeIntersects dmnd1 dmnd2
+//    && backslopeIntersects dmnd1 dmnd2
 
-let overlapDim (x1, y1) (x2, y2) (xn, yn) overlap =
-    let half = overlap / 2
-    let rmn = overlap % 2
-    let xDiff = (x2 - x1)
-    let yDiff = (y2 - y1)
-    let xCloser = abs xDiff < abs yDiff
-    let (xDelta, yDelta) =
-        if xCloser
-            then half, half+rmn
-            else half+rmn, half
-    let xSign = if xDiff = 0 then 1 else (xDiff/abs xDiff)
-    let ySign = if yDiff = 0 then 1 else (yDiff/abs yDiff)
-
-    let shift = if xCloser then abs xDiff else abs yDiff
-
-    let sx, sy = 
-        if xCloser 
-                 // smaller    // bigger
-            then (xn - (shift * xSign)), (yn + (shift * ySign))
-            else (xn + (shift * xSign)), (yn - (shift * ySign))
-                 // bigger     // smaller
-    let one = (xn+(xDelta*xSign), yn+(yDelta*ySign))
-    let two =
-        if xCloser 
-            then (sx-(xDelta*xSign), sy+(yDelta*ySign))
-            else (sx+(xDelta*xSign), sy-(yDelta*ySign))
-    [one; two]
-
-let overlapCorners bot1 bot2 nearest =
-    let (cntr1,r1), (cntr2,r2) = bot1, bot2
-    let (x1,y1,z1) = cntr1
-    let (x2,y2,z2) = cntr2
-    let xn, yn, zn = nearest
+let doIntersect (cntr1,r1) (cntr2,r2) =
+    let radtotal = r1 + r2
     let distance = distance cntr1 cntr2
-    let overlap = (r1 + r2) - distance
-    let XYs = overlapDim (x1, y1) (x2, y2) (xn, yn) overlap
-    let YZs = overlapDim (y1, z1) (y2, z2) (yn, zn) overlap
-    let XZs = overlapDim (x1, z1) (x2, z2) (xn, zn) overlap
-    let xyCorners = XYs |> List.map (fun (x,y) -> (x,y,zn))
-    let yzCorners = YZs |> List.map (fun (y,z) -> (xn,y,z))
-    let xzCorners = XZs |> List.map (fun (x,z) -> (x,yn,z))
-    List.collect id [
-        xyCorners; 
-        yzCorners; 
-        //xzCorners
-        ] 
+    distance <= radtotal
 
+let getCorners dmnd1 dmnd2 =
+    let corners slope otherNear otherFar fct =
+        let distN = otherNear - slope
+        let countN = distN - (distN / 2L)
+        let c1 = (slope + countN), (fct * countN)
+        let distF = otherFar - slope     
+        let countF = distF / 2L
+        let c2 = (slope + countF), (fct * countF)
+        [c1; c2]
+    let leftSlope = leftSlope dmnd1
+    let rightSlope = rightSlope dmnd1
+    let leftBackslope = leftBackslope dmnd2
+    let rightBackslope = rightBackslope dmnd2
+    Seq.collect id [
+        corners leftSlope leftBackslope rightBackslope 1L
+        corners rightSlope leftBackslope rightBackslope 1L
+        corners rightBackslope rightSlope leftSlope -1L
+        corners leftBackslope rightSlope leftSlope -1L]
 
-let consider bot1 bot2 =
-    let nowt = []
-    let _, rad = bot1
-    if bot1 = bot2  then nowt else
-    let corners2 = getRangeCorners bot2
-    let (bot2Nearest, nDist) = getNearest bot1 corners2
-    if nDist > rad then nowt else
-    let (_, fDist) = getFurthest bot1 corners2
-    if fDist <= rad then nowt else
-    corners2
-
-let pointsOfInterest allBots bot = seq{
-    let corners = getRangeCorners bot
-    yield! corners
-    yield!
-        allBots 
-        |> Seq.collect (consider bot)}
-
-let allPoi allBots =
-    allBots
-    |> Seq.collect (pointsOfInterest allBots)
-
-let mutable count = 0
-let test (cntr1, r1) (cntr2, r2) loc =
-    count <- (print (count + 1))
-    let actual = (r1 + r2) - ((distance cntr1 loc) + (distance cntr2 loc))
-    if actual < 0 || actual > 1 then failwith "oops"
 
 let Part2 result1 (input : string) = // "result2" 
     let bots = input |> toLines |> List.map parseLine
-    //allPoi bots |> Seq.length
-    let bot1 = bots.Item 0
-    let bot2 = bots.Item 5
-    
-    //let bot1 = ((0,0,0), 10)
-    //let bot2 = ((5,11,0), 10)
-    let bot1 = ((0,0,0), 10)
-    let bot2 = ((15,-2,0), 10)
-    //let bot1 = ((0,0,0), 10)
-    //let bot2 = ((-2,0,0), 10)
+    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
+    |> Seq.collect(fun (bot1,bot2) -> 
+        let intersect = doIntersect bot1 bot2
+        if (not intersect) then Seq.empty else
+        let (x1, y1, z1), r1 = bot1
+        let (x2, y2, z2), r2 = bot2
+        Seq.collect id [
+            getCorners ((x1, y1), r1) ((x2, y2), r2) 
+                |> Seq.collect (fun (x,y) -> [(x,y,z1); (x,y,z2)])
+            getCorners ((y1, z1), r1) ((y2, z2), r2)
+                |> Seq.collect (fun (y,z) -> [(x1,y,z); (x2,y,z)])
+            getCorners ((x1, z1), r1) ((x2, z2), r2)
+                    |> Seq.collect (fun (x,z) -> [(x,y1,z); (x,y2,z)])])
+        //|> Seq.map (rangeCount bots)
+        //|> Seq.max
 
-    let (nearest, _) = getNearest bot1 (getRangeCorners bot2)
-    let ocs = overlapCorners bot1 bot2 (print nearest)
-    printfn "---"
-    ocs |> List.iter(fun oc ->  test bot1 bot2 (print oc))
-   
+        |> Seq.map (fun loc -> loc, rangeCount bots loc)
+        |> Seq.filter (fun (loc, count) -> count = 898)
+        |> Seq.map (fun (loc, count) -> loc, distance loc (0L,0L,0L))
+        |> Seq.minBy snd
 
-    
-
-
-//
