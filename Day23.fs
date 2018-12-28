@@ -48,6 +48,7 @@ let parseLine  =
         (grpi 1, grpi 2, grpi 3), grpi 4
 
 let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
+let distance2D (x,y) (x',y') = abs(x - x') + abs(y - y')
    
 let Part1 (input : string) = 
     let bots = input |> toLines |> List.map parseLine
@@ -62,16 +63,10 @@ let Part1 (input : string) =
 (* ================ Part B ================ *)
 
 type Point = A|N|S|W|E|B
+type Plane = XY|YZ|XZ
 type Loc = int*int*int
-type Vct = int*int*int
-type NeighbourInfo = Point*Vct*Vct
-
-let add (x1,y1,z1) (x2,y2,z2) = (x1+x2, y1+y2, z1+z2)
-let sub (x1,y1,z1) (x2,y2,z2) = (x1-x2, y1-y2, z1-z2)
-let mul (x1,y1,z1) (x2,y2,z2) = (x1*x2, y1*y2, z1*z2)
-
-let scale m (x,y,z) = (m*x, m*y, m*z)
-let sum (x,y,z) = x+y+z
+type Vct = int*int
+type ProjectInfo = Point*Plane*Vct*Vct
 
 let rangeCount bots loc =
     bots 
@@ -95,100 +90,138 @@ let getInsideCornders bot1 bot2 =
     getCorners bot2
     |> List.filter(fun (loc,crn) -> distance c1 loc <= r1)
     
-let getNeighbours (_, point) : NeighbourInfo list= 
+let getProjectInfos (_, point) : ProjectInfo list= 
     match point with
-    | A -> [    (N, (0,0,1), (0,-1,0));
-                (W, (0,0,1), (-1,0,0));
-                (E, (0,0,1), (1,0,0));
-                (S, (0,0,1), (0,1,0));]
-    | N -> [    (A, (0,1,0), (0,0,-1)); 
-                (W, (0,1,0), (-1,0,0));
-                (E, (0,1,0), (1,0,0));
-                (B, (0,1,0), (0,0,1)); ]
-    | W -> [    (A, (1,0,0), (0,0,-1)); 
-                (N, (1,0,0), (0,-1,0));
-                (S, (1,0,0), (0,1,0));
-                (B, (1,0,0), (0,0,1)); ]
-    | E -> [    (A, (-1,0,0), (0,0,-1)); 
-                (N, (-1,0,0), (0,-1,0));
-                (S, (-1,0,0), (0,1,0));
-                (B, (-1,0,0), (0,0,1)); ]
-    | S -> [    (A, (0,-1,0), (0,0,-1)); 
-                (W, (0,-1,0), (-1,0,0));
-                (E, (0,-1,0), (1,0,0));
-                (B, (0,-1,0), (0,0,1)); ]
-    | B -> [    (N, (0,0,-1), (0,-1,0));
-                (W, (0,0,-1), (-1,0,0));
-                (E, (0,0,-1), (1,0,0));
-                (S, (0,0,-1), (0,1,0)); ]
+    | A -> [    (N, YZ, (0,1), (-1,0));
+                (W, XZ, (0,1), (-1,0));
+                (E, XZ, (0,1), (1,0));
+                (S, YZ, (0,1), (1,0));]
+    | N -> [    (A, YZ, (1,0), (0,-1)); 
+                (W, XY, (0,1), (-1,0));
+                (E, XY, (0,1), (1,0));
+                (B, YZ, (1,0), (0,1)); ]
+    | W -> [    (A, XZ, (1,0), (0,-1)); 
+                (N, XY, (1,0), (0,-1));
+                (S, XY, (1,0), (0,1));
+                (B, XZ, (1,0), (0,1)); ]
+    | E -> [    (A, XZ, (-1,0), (0,-1)); 
+                (N, XY, (-1,0), (0,-1));
+                (S, XY, (-1,0), (0,1));
+                (B, XZ, (-1,0), (0,1)); ]
+    | S -> [    (A, YZ, (-1,0), (0,-1)); 
+                (W, XY, (0,-1), (-1,0));
+                (E, XY, (0,-1), (1,0));
+                (B, YZ, (-1,0), (0,1)); ]
+    | B -> [    (N, YZ, (0,-1), (-1,0));
+                (W, XZ, (0,-1), (-1,0));
+                (E, XZ, (0,-1), (1,0));
+                (S, YZ, (0,-1), (1,0)); ]
     
 let chooseNeighbours crn ignoreCrns =
     let ignorePts = 
         ignoreCrns
         |> List.map (fun (_,pt) -> pt)
-    getNeighbours crn
-    |> List.filter (fun (point, _,_) -> 
+    getProjectInfos crn
+    |> List.filter (fun (point,_, _,_) -> 
         not (List.contains point ignorePts))
 
-let getPoi (cntr1:Loc) (slack:int) (corner:Loc) ((_,vct1, vct2):NeighbourInfo) =
-    let v2Count = slack / 2
-    let v1Count = slack - v2Count
-    let crnrVect = sub corner cntr1
+let getPoi2D (c1, r1) crnr vct1 vct2 =
+    let add (x1,y1) (x2,y2) = (x1+x2, y1+y2)
+    let sub (x1,y1) (x2,y2) = (x1-x2, y1-y2)
+    let mul (x1,y1) (x2,y2) = (x1*x2, y1*y2)
+    let scale m (x,y) = (m*x, m*y)
+    let sum (x,y) = x+y
+
+    let dist = distance2D c1 crnr
+    let steps = r1 - dist
+    let v2Count = steps / 2
+    let v1Count = steps - v2Count
+    let crnrVect = sub crnr c1
+    let crnrVectByVct1 = (mul crnrVect vct1)
     let crnrVectByVct2 = (mul crnrVect vct2)
     let poi =
         if sum crnrVectByVct2 > 1 then
             (add
-                (add corner (scale v1Count vct1))
+                (add crnr (scale v1Count vct1))
                 (scale v2Count vct2))
         else
             let distAxis = -1 * (sum crnrVectByVct2)
             (add
-                (add corner (scale (distAxis + v1Count) vct1))
+                (add crnr (scale (distAxis + v1Count) vct1))
                 (scale (distAxis + v2Count) vct2))
+    let newDist = distance2D c1 poi
+    if newDist <> r1 then failwith "oops"
     poi
-    
-let getPoiFromCorner cntr1 slack ((corner,_), neighbourInfos) =
-    neighbourInfos
-    |> List.map (fun neighbourInfo -> getPoi cntr1 slack corner neighbourInfo)
 
+let mutable count = 0
 let test (c1,r1) (c2,r2) poi =
+    printfn "count: %i" count; count <- count + 1
     let expected n = n = 0 || n=1
     let slack1 = r1 - (distance c1 poi)
     let slack2 = r2 - (distance c2 poi)
     if [slack1; slack2; slack1 + slack2] |> List.forall expected
         then poi
-        else failwith "oops"
+        else    failwith "oops"
+
+        // bot2 just for early testing
+let getPoi bot1 bot2 (corner:Loc) ((_, plane,vct1, vct2):ProjectInfo) =
+    let ((x,y,z), r1) = bot1
+    let (xc,yc,zc) = corner
+    let poi = 
+        match plane with
+        | XY -> 
+            let rPlane = r1 - abs (z - zc)
+            let x',y' = getPoi2D ((x,y),rPlane) (xc,yc) vct1 vct2
+            (x',y',zc)
+        | YZ -> 
+            let rPlane = r1 - abs (x - xc)
+            let y',z' = getPoi2D ((y,z),rPlane) (yc,zc) vct1 vct2
+            (xc,y',z')
+        | XZ -> 
+            let rPlane = r1 - abs (y - yc)
+            let x',z' = getPoi2D ((x,z),rPlane) (xc,zc) vct1 vct2
+            (x',yc,z')
+    test bot1 bot2 poi
+    
+let getPoiFromCorner bot1 bot2 ((corner,_), neighbourInfos) =
+    neighbourInfos
+    |> List.map (fun neighbourInfo -> getPoi bot1 bot2 corner neighbourInfo)
 
 let getPoisForBots (bot1, bot2) =
     //if bot1 = bot2 then [] else
     let (c1, r1), (c2, r2) = bot1, bot2
     //if r2 > r1 then [] else
     let slack = -1 + r1 + r2 - distance c1 c2
-    if slack <= 0 then Seq.empty else
+    if slack <= 0 then [] else
 
     let insideCorners = getInsideCornders bot1 bot2
-    let crnNeighbourInfos =
+    let crnProjectInfos =
         insideCorners
         |> List.map (fun cnr -> cnr, chooseNeighbours cnr insideCorners)
     let pois= 
-        crnNeighbourInfos
-        |> Seq.collect (getPoiFromCorner c1 slack)
-        |> Seq.map (test bot1 bot2)
+        crnProjectInfos
+        |> List.collect (getPoiFromCorner bot1 bot2)
+        //|> List.map (test bot1 bot2)
     pois
 
 let Part2 result1 (input : string) = // "result2" 
     // not looking at corners!
     let bots = input |> toLines |> List.map parseLine
-    let max, locations =
-        seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
+
+    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
         |> Seq.collect getPoisForBots
-        |> Seq.map (fun loc -> loc, rangeCount bots loc)
-        |> Seq.groupBy snd
-        |> Seq.maxBy fst
-    let locations = List.ofSeq locations
-    let closest =
-        locations
-        |> List.map (fst>>(distance (0,0,0)))
-        |> List.min
-    max, List.length locations, closest, locations
+        |> Seq.length
+
+    //let max, locations =
+    //    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
+    //    |> Seq.collect getPoisForBots
+    //    |> Seq.map (fun loc -> loc, rangeCount bots loc)
+    //    |> Seq.groupBy snd
+    //    |> Seq.maxBy fst
+    //let locations = List.ofSeq locations
+    //let closest =
+    //    locations
+    //    |> List.map (fst>>(distance (0,0,0)))
+    //    |> List.min
+    //max, List.length locations, closest, locations
     
