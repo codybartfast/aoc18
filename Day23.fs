@@ -130,9 +130,6 @@ let chooseNeighbours crn ignoreCrns =
     |> List.filter (fun (point, _,_) -> 
         not (List.contains point ignorePts))
 
-let movesAway (cntr:Loc) (crnr:Loc) (vct:Vct) =
-    (distance cntr (add crnr vct)) > (distance cntr crnr)
-
 let getPoi (cntr1:Loc) (slack:int) (corner:Loc) ((_,vct1, vct2):NeighbourInfo) =
     let v2Count = slack / 2
     let v1Count = slack - v2Count
@@ -173,10 +170,16 @@ let getPoiForBots (bot1, bot2) =
 let Part2 result1 (input : string) = // "result2" 
     // not looking at corners!
     let bots = input |> toLines |> List.map parseLine
-    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
-    |> Seq.collect getPoiForBots
-    |> Seq.distinct
-
-    |> Seq.length
-    //|> Seq.map (rangeCount bots)
-    //|> Seq.max
+    let max, locations =
+        seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
+        |> Seq.collect getPoiForBots
+        |> Seq.map (fun loc -> loc, rangeCount bots loc)
+        |> Seq.groupBy snd
+        |> Seq.maxBy fst
+    let locations = List.ofSeq locations
+    let closest =
+        locations
+        |> List.map (fst>>(distance (0,0,0)))
+        |> List.min
+    max, List.length locations, closest
+    
