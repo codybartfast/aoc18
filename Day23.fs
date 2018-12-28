@@ -62,6 +62,16 @@ let Part1 (input : string) =
 (* ================ Part B ================ *)
 
 type Point = A|N|S|W|E|B
+type Loc = int*int*int
+type Vct = int*int*int
+type NeighbourInfo = Point*Vct*Vct
+
+let add (x1,y1,z1) (x2,y2,z2) = (x1+x2, y1+y2, z1+z2)
+let sub (x1,y1,z1) (x2,y2,z2) = (x1-x2, y1-y2, z1-z2)
+let mul (x1,y1,z1) (x2,y2,z2) = (x1*x2, y1*y2, z1*z2)
+
+let scale m (x,y,z) = (m*x, m*y, m*z)
+let sum (x,y,z) = x+y+z
 
 let rangeCount bots loc =
     bots 
@@ -85,7 +95,7 @@ let getInsideCornders bot1 bot2 =
     getCorners bot2
     |> List.filter(fun (loc,crn) -> distance c1 loc <= r1)
     
-let getNeighbours (_, point) = 
+let getNeighbours (_, point) : NeighbourInfo list= 
     match point with
     | A -> [    (N, (0,0,1), (0,-1,0));
                 (W, (0,0,1), (-1,0,0));
@@ -120,23 +130,53 @@ let chooseNeighbours crn ignoreCrns =
     |> List.filter (fun (point, _,_) -> 
         not (List.contains point ignorePts))
 
-let getPoiFromCorner cntr1 (corner, neighbours) =
-    
+let movesAway (cntr:Loc) (crnr:Loc) (vct:Vct) =
+    (distance cntr (add crnr vct)) > (distance cntr crnr)
 
-let getPoi (bot1, bot2) =
+let getPoi (cntr1:Loc) (slack:int) (corner:Loc) ((_,vct1, vct2):NeighbourInfo) =
+    let v2Count = slack / 2
+    let v1Count = slack - v2Count
+    let crnrVect = sub corner cntr1
+    let crnrVectByVct2 = (mul crnrVect vct2)
+    let poi =
+        if sum crnrVectByVct2 > 1 then
+            (add
+                (add corner (scale v1Count vct1))
+                (scale v2Count vct2))
+        else
+            let distAxis = -1 * (sum crnrVectByVct2)
+            (add
+                (add corner (scale (distAxis + v1Count) vct1))
+                (scale (distAxis + v2Count) vct2))
+    poi
+    
+let getPoiFromCorner cntr1 slack ((corner,_), neighbourInfos) =
+    neighbourInfos
+    |> List.map (fun neighbourInfo -> getPoi cntr1 slack corner neighbourInfo)
+
+let getPoiForBots (bot1, bot2) =
     //if bot1 = bot2 then [] else
     let (c1, r1), (c2, r2) = bot1, bot2
     //if r2 > r1 then [] else
     let slack = -1 + r1 + r2 - distance c1 c2
-    if slack <= 0 then [] else
+    if slack <= 0 then Seq.empty else
 
     let insideCorners = getInsideCornders bot1 bot2
-    let neighbourInfo =
+    let crnNeighbourInfos =
         insideCorners
         |> List.map (fun cnr -> cnr, chooseNeighbours cnr insideCorners)
-    [1]
+    let xxx= 
+        crnNeighbourInfos
+        |> Seq.collect (getPoiFromCorner c1 slack)
+    xxx
 
 let Part2 result1 (input : string) = // "result2" 
+    // not looking at corners!
     let bots = input |> toLines |> List.map parseLine
     seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
-    |> Seq.collect getPoi
+    |> Seq.collect getPoiForBots
+    |> Seq.distinct
+
+    |> Seq.length
+    //|> Seq.map (rangeCount bots)
+    //|> Seq.max
