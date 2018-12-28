@@ -142,18 +142,15 @@ let getPoi2D (c1, r1) crnr vct1 vct2 =
     let vct1MovesOut = sum crnrVectByVct1 > 1
     let vct2MovesOut = sum crnrVectByVct2 > 1
     let poi =
-        if vct2MovesOut then
-            (add
-                (add crnr (scale v1Count vct1))
-                (scale v2Count vct2))
-        else
-            let distAxis = 
-                if vct1MovesOut 
-                then abs (sum crnrVectByVct2)
-                else (abs (sum crnrVectByVct2)) + (abs (sum crnrVectByVct1))
-            (add
-                (add crnr (scale (distAxis + v1Count) vct1))
-                (scale (distAxis + v2Count) vct2))
+        let distAxis = 
+            match vct1MovesOut, vct2MovesOut with
+            | true, true -> 0
+            | false, true -> abs (sum crnrVectByVct1)
+            | true, false -> abs (sum crnrVectByVct2)
+            | false, false -> (abs (sum crnrVectByVct2)) + (abs (sum crnrVectByVct1))
+        (add
+            (add crnr (scale (distAxis + v1Count) vct1))
+            (scale (distAxis + v2Count) vct2))
     let newDist = distance2D c1 poi
     if newDist <> r1 then failwith "oops"
     poi
