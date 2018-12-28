@@ -44,7 +44,7 @@ let parseLine  =
     rxMatch "(-?\d+)\D+?(-?\d+)\D+?(-?\d+)\D+?(-?\d+)" 
     >> fun mtch ->
         let grp idx = groupValue mtch idx
-        let grpi = grp >> int64
+        let grpi = grp >> int
         (grpi 1, grpi 2, grpi 3), grpi 4
 
 let distance (x,y,z) (x',y',z') = abs(x - x') + abs(y - y') + abs(z - z')
@@ -61,7 +61,7 @@ let Part1 (input : string) =
 
 (* ================ Part B ================ *)
 
-type Corner = A|N|S|W|E|B
+type Point = A|N|S|W|E|B
 
 let rangeCount bots loc =
     bots 
@@ -85,16 +85,58 @@ let getInsideCornders bot1 bot2 =
     getCorners bot2
     |> List.filter(fun (loc,crn) -> distance c1 loc <= r1)
     
+let getNeighbours (_, point) = 
+    match point with
+    | A -> [    (N, (0,0,1), (0,-1,0));
+                (W, (0,0,1), (-1,0,0));
+                (E, (0,0,1), (1,0,0));
+                (S, (0,0,1), (0,1,0));]
+    | N -> [    (A, (0,1,0), (0,0,-1)); 
+                (W, (0,1,0), (-1,0,0));
+                (E, (0,1,0), (1,0,0));
+                (B, (0,1,0), (0,0,1)); ]
+    | W -> [    (A, (1,0,0), (0,0,-1)); 
+                (N, (1,0,0), (0,1,0));
+                (S, (1,0,0), (0,1,0));
+                (B, (1,0,0), (0,0,1)); ]
+    | E -> [    (A, (-1,0,0), (0,0,-1)); 
+                (N, (-1,0,0), (0,-1,0));
+                (S, (-1,0,0), (0,1,0));
+                (B, (-1,0,0), (0,0,1)); ]
+    | S -> [    (A, (0,-1,0), (0,0,-1)); 
+                (W, (0,-1,0), (-1,0,0));
+                (E, (0,-1,0), (1,0,0));
+                (B, (0,-1,0), (0,0,1)); ]
+    | B -> [    (N, (0,0,-1), (0,-1,0));
+                (W, (0,0,-1), (-1,0,0));
+                (E, (0,0,-1), (1,0,0));
+                (S, (0,0,-1), (0,1,0)); ]
+    
+let chooseNeighbours crn ignoreCrns =
+    let ignorePts = 
+        ignoreCrns
+        |> List.map (fun (_,pt) -> pt)
+    getNeighbours crn
+    |> List.filter (fun (point, _,_) -> 
+        not (List.contains point ignorePts))
+
+let getPoiFromCorner cntr1 (corner, neighbours) =
+    
 
 let getPoi (bot1, bot2) =
-    if bot1 = bot2 then [] else
+    //if bot1 = bot2 then [] else
     let (c1, r1), (c2, r2) = bot1, bot2
-    if r2 > r1 then [] else
-    if (not (doIntersect bot1 bot2)) then [] else
-    let xxx = getInsideCornders bot1 bot2
+    //if r2 > r1 then [] else
+    let slack = -1 + r1 + r2 - distance c1 c2
+    if slack <= 0 then [] else
+
+    let insideCorners = getInsideCornders bot1 bot2
+    let neighbourInfo =
+        insideCorners
+        |> List.map (fun cnr -> cnr, chooseNeighbours cnr insideCorners)
     [1]
 
 let Part2 result1 (input : string) = // "result2" 
     let bots = input |> toLines |> List.map parseLine
     seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
-    |> Seq.map getPoi
+    |> Seq.collect getPoi
