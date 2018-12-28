@@ -106,7 +106,7 @@ let getNeighbours (_, point) : NeighbourInfo list=
                 (E, (0,1,0), (1,0,0));
                 (B, (0,1,0), (0,0,1)); ]
     | W -> [    (A, (1,0,0), (0,0,-1)); 
-                (N, (1,0,0), (0,1,0));
+                (N, (1,0,0), (0,-1,0));
                 (S, (1,0,0), (0,1,0));
                 (B, (1,0,0), (0,0,1)); ]
     | E -> [    (A, (-1,0,0), (0,0,-1)); 
@@ -151,7 +151,15 @@ let getPoiFromCorner cntr1 slack ((corner,_), neighbourInfos) =
     neighbourInfos
     |> List.map (fun neighbourInfo -> getPoi cntr1 slack corner neighbourInfo)
 
-let getPoiForBots (bot1, bot2) =
+let test (c1,r1) (c2,r2) poi =
+    let expected n = n = 0 || n=1
+    let slack1 = r1 - (distance c1 poi)
+    let slack2 = r2 - (distance c2 poi)
+    if [slack1; slack2; slack1 + slack2] |> List.forall expected
+        then poi
+        else failwith "oops"
+
+let getPoisForBots (bot1, bot2) =
     //if bot1 = bot2 then [] else
     let (c1, r1), (c2, r2) = bot1, bot2
     //if r2 > r1 then [] else
@@ -162,17 +170,18 @@ let getPoiForBots (bot1, bot2) =
     let crnNeighbourInfos =
         insideCorners
         |> List.map (fun cnr -> cnr, chooseNeighbours cnr insideCorners)
-    let xxx= 
+    let pois= 
         crnNeighbourInfos
         |> Seq.collect (getPoiFromCorner c1 slack)
-    xxx
+        |> Seq.map (test bot1 bot2)
+    pois
 
 let Part2 result1 (input : string) = // "result2" 
     // not looking at corners!
     let bots = input |> toLines |> List.map parseLine
     let max, locations =
         seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
-        |> Seq.collect getPoiForBots
+        |> Seq.collect getPoisForBots
         |> Seq.map (fun loc -> loc, rangeCount bots loc)
         |> Seq.groupBy snd
         |> Seq.maxBy fst
@@ -181,5 +190,5 @@ let Part2 result1 (input : string) = // "result2"
         locations
         |> List.map (fst>>(distance (0,0,0)))
         |> List.min
-    max, List.length locations, closest
+    max, List.length locations, closest, locations
     
