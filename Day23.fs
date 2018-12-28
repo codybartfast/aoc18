@@ -145,7 +145,11 @@ let getPoi2D (c1, r1) crnr vct1 vct2 =
                 (add crnr (scale v1Count vct1))
                 (scale v2Count vct2))
         else
-            let distAxis = -1 * (sum crnrVectByVct2)
+            let distAxis =
+                if dist <> 25833292 then
+                    (abs (sum crnrVectByVct2))
+                else 
+                    (abs (sum crnrVectByVct1))
             (add
                 (add crnr (scale (distAxis + v1Count) vct1))
                 (scale (distAxis + v2Count) vct2))
