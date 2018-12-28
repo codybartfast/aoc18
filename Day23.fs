@@ -139,17 +139,18 @@ let getPoi2D (c1, r1) crnr vct1 vct2 =
     let crnrVect = sub crnr c1
     let crnrVectByVct1 = (mul crnrVect vct1)
     let crnrVectByVct2 = (mul crnrVect vct2)
+    let vct1MovesOut = sum crnrVectByVct1 > 1
+    let vct2MovesOut = sum crnrVectByVct2 > 1
     let poi =
-        if sum crnrVectByVct2 > 1 then
+        if vct2MovesOut then
             (add
                 (add crnr (scale v1Count vct1))
                 (scale v2Count vct2))
         else
-            let distAxis =
-                if dist <> 25833292 then
-                    (abs (sum crnrVectByVct2))
-                else 
-                    (abs (sum crnrVectByVct1))
+            let distAxis = 
+                if vct1MovesOut 
+                then abs (sum crnrVectByVct2)
+                else (abs (sum crnrVectByVct2)) + (abs (sum crnrVectByVct1))
             (add
                 (add crnr (scale (distAxis + v1Count) vct1))
                 (scale (distAxis + v2Count) vct2))
