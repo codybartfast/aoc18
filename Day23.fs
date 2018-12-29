@@ -165,7 +165,6 @@ let test (c1,r1) (c2,r2) poi =
         then poi
         else failwith "oops"
 
-        // bot2 just for early testing
 let getPoi bot1 bot2 (corner:Loc) ((_, plane,vct1, vct2):ProjectInfo) =
     let ((x,y,z), r1) = bot1
     let (xc,yc,zc) = corner
@@ -190,9 +189,7 @@ let getPoiFromCorner bot1 bot2 ((corner,_), neighbourInfos) =
     |> List.map (fun neighbourInfo -> getPoi bot1 bot2 corner neighbourInfo)
 
 let getPoisForBots (bot1, bot2) =
-    //if bot1 = bot2 then [] else
     let (c1, r1), (c2, r2) = bot1, bot2
-    //if r2 > r1 then [] else
     let slack = -1 + r1 + r2 - distance c1 c2
     if slack <= 0 then [] else
 
@@ -206,24 +203,21 @@ let getPoisForBots (bot1, bot2) =
         //|> List.map (test bot1 bot2)
     pois
 
-let Part2 result1 (input : string) = // "result2" 
-    // not looking at corners!
+let Part2 result1 (input : string) = 
     let bots = input |> toLines |> List.map parseLine
 
-    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
+    let max, locationSeq =
+        seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
         |> Seq.collect getPoisForBots
-        |> Seq.length
-
-    //let max, locations =
-    //    seq{ for bot1 in bots do for bot2 in bots do yield (bot1, bot2)}
-    //    |> Seq.collect getPoisForBots
-    //    |> Seq.map (fun loc -> loc, rangeCount bots loc)
-    //    |> Seq.groupBy snd
-    //    |> Seq.maxBy fst
-    //let locations = List.ofSeq locations
-    //let closest =
-    //    locations
-    //    |> List.map (fst>>(distance (0,0,0)))
-    //    |> List.min
-    //max, List.length locations, closest, locations
-    
+        |> Seq.map (fun loc -> loc, rangeCount bots loc)
+        |> Seq.groupBy snd
+        |> Seq.maxBy fst
+    let locations = 
+        locationSeq
+        |> Seq.distinct
+        |> List.ofSeq
+    let closest =
+        locations
+        |> List.map (fst>>(distance (0,0,0)))
+        |> List.min
+    max, closest
