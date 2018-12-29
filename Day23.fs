@@ -79,11 +79,11 @@ let doIntersect (cntr1,r1) (cntr2,r2) =
     distance <= radtotal
 
 let getCorners ((x,y,z), r) =
-    [(  (x,y,z+r), A);
-            ((x,y+r,z), N);
+    [(  (x,y,z-r), A);
+            ((x,y-r,z), N);
         ((x-r,y,z), W); ((x+r,y,z), E);
-            ((x,y-r,z), S);
-        ((x,y,z-r), B);]
+            ((x,y+r,z), S);
+        ((x,y,z+r), B);]
 
 let getInsideCornders bot1 bot2 =
     let (c1, r1) = bot1
@@ -157,13 +157,13 @@ let getPoi2D (c1, r1) crnr vct1 vct2 =
 
 let mutable count = 0
 let test (c1,r1) (c2,r2) poi =
-    printfn "count: %i" count; count <- count + 1
+    //printfn "count: %i" count; count <- count + 1
     let expected n = n = 0 || n=1
     let slack1 = r1 - (distance c1 poi)
     let slack2 = r2 - (distance c2 poi)
     if [slack1; slack2; slack1 + slack2] |> List.forall expected
         then poi
-        else    failwith "oops"
+        else failwith "oops"
 
         // bot2 just for early testing
 let getPoi bot1 bot2 (corner:Loc) ((_, plane,vct1, vct2):ProjectInfo) =
