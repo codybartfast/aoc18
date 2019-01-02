@@ -84,8 +84,8 @@ let Part1 (input : string) =  // "result1" (*
 
 (* ================ Part B ================ *)
 
-let Part2 result1 (input : string) =  "result2" (*
-    input |> toLines |> Seq.map parseLine
+let Part2 result1 (input : string) = // "result2" (*
+    "Happy New Year!"
 
 
 
