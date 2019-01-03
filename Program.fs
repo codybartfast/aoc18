@@ -12,7 +12,7 @@ let getInputFile name =
     Path.Combine(__SOURCE_DIRECTORY__, "inputs", name) + ".txt"
 let readText name = File.ReadAllText(getInputFile name)
 
-open Day22a
+open Day22
 let name = "day22"
 
 let text = readText name
