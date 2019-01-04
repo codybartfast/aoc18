@@ -1,44 +1,30 @@
-﻿(* a.cbf.pub/tx/___________________________________________/data.html *)
+﻿(* a.cbf.pub/tx/Qckma-96sYFdqwA-KIM66DCWb1Of-7Odcp2jUa1pyXI/data.html *)
 
 module Day24
 
-// #nowarn "0025"
+#nowarn "0025"
 
 open System
 open System.Text.RegularExpressions
-open System.Collections.Generic
 
 let toLines (text:string) = 
     text.Split([|'\r'; '\n'|], StringSplitOptions.RemoveEmptyEntries) 
     |> List.ofArray
 let groupValue (m:Match) (i:int) = m.Groups.[i].Value
 let rxMatch pattern str = Regex.Match(str, pattern)
-let rxMatches pattern str = Regex.Matches(str, pattern)
 let rxSplit pattern str = 
     Regex.Split(str, pattern) 
     |> Array.filter (String.IsNullOrWhiteSpace >> not) |> List.ofArray
-let rec repeat item = seq{ yield item; yield! repeat item }
-let NL = System.Environment.NewLine
-let len (seq : seq<'a>) = Seq.length seq
-let toChars (str : string) = str.ToCharArray()
-let toString (chrs : seq<char>) = String(Array.ofSeq chrs)
-let encode (str : string) = System.Text.Encoding.ASCII.GetBytes(str);
-let toHex = 
-    BitConverter.ToString >> (fun str -> str.Replace("-", String.Empty))
-let (||~) pred1 pred2 = (fun a -> (pred1 a) || (pred2 a))
-let (&&~) pred1 pred2 = (fun a -> (pred1 a) && (pred2 a))
-let filterCount predicate = Seq.filter predicate >> Seq.length
-let print obj = (printfn "%O" obj); obj
 
 (* ================ Part A ================ *) 
-//[<Measure>]
-//type pnt
+
 type Damage = Bludgeoning | Cold | Fire | Radiation | Slashing
 type Group = {Army: string; Id: int; Count : int;  HP : int; AD : int; 
                 Damage: Damage; Initiative : int;  Weak : Set<Damage>; 
                 Immune : Set<Damage> }
 type Army =  {Name: string; Groups: Map<int,Group>}
 type Armies = Map<string,Army>
+type Aftermath  = Victory of Army | Stalemate
 
 let parseDamage = function
     | "bludgeoning" -> Bludgeoning
@@ -110,14 +96,14 @@ let selectTargets attkArmy dfndArmy =
         ||> List.fold (fun (defenders, pairings) attacker ->
             let target = 
                 if Set.isEmpty defenders then None else
-                let (target, delt) = 
+                let (target, damage) = 
                     defenders 
                     |> Seq.map(fun defender -> 
                         defender, groupDamage attacker defender)
                     |> Seq.sortByDescending (fun (dfnd,_) ->
                         targetSortValue attacker dfnd)
                     |> Seq.head
-                if delt = 0 then None else Some target
+                if damage = 0 then None else Some target
             let defenders = 
                 match target with
                 | None -> defenders
@@ -129,27 +115,28 @@ let selectTargets attkArmy dfndArmy =
         | Some dfnd -> Some (attk, dfnd)
         | _ -> None)
 
-let groupFight (armies : Armies) ((attkArmy,attkId), (dfndArmy, dfndId)) =
-    let attkArmy = armies.[attkArmy]
-    let dfndArmy = armies.[dfndArmy]
-    match attkArmy.Groups.ContainsKey attkId, 
-            dfndArmy.Groups.ContainsKey dfndId with
-    | _, false | false, _ -> armies 
-    | true, true ->
-    let attk = attkArmy.Groups.[attkId]
-    if attk.Count <= 0 then armies else
-    let dfnd = dfndArmy.Groups.[dfndId]
-    let damage = groupDamage attk dfnd
-    let unitsLost = damage / dfnd.HP
+let groupFight (armies : Armies) pairing =
+    let ((atkArmyId, atkGroupId), (defArmyId, defGroupId)) = pairing
+    let atkArmy = armies.[atkArmyId]
+    let defArmy = armies.[defArmyId]
+    if not (atkArmy.Groups.ContainsKey atkGroupId
+            && defArmy.Groups.ContainsKey defGroupId) 
+    then armies 
+    else
+        let atkGroup = atkArmy.Groups.[atkGroupId]
+        if atkGroup.Count <= 0 then armies else
+        let defGroup = defArmy.Groups.[defGroupId]
+        let damage = groupDamage atkGroup defGroup
+        let unitsLost = damage / defGroup.HP
 
-    let dfnd = {dfnd with Count = dfnd.Count - unitsLost}
-    let dfndArmy = 
-        if dfnd.Count <= 0 then 
-            {dfndArmy with Groups = dfndArmy.Groups.Remove dfnd.Id}
-        else
-            {dfndArmy with Groups = dfndArmy.Groups.Add (dfnd.Id, dfnd)}
-    armies.Add (dfndArmy.Name, dfndArmy)
-    
+        let defGroup' = {defGroup with Count = defGroup.Count - unitsLost}
+        let defArmy' = 
+            if defGroup'.Count <= 0 then 
+                {defArmy with Groups = defArmy.Groups.Remove defGroup'.Id}
+            else
+                {defArmy with 
+                    Groups = defArmy.Groups.Add (defGroup'.Id, defGroup')}
+        armies.Add (defArmy'.Name, defArmy')
 
 let groupMap (groups: Group list) =
     groups
@@ -159,61 +146,50 @@ let groupMap (groups: Group list) =
 let rec fight (armies : Map<string,Army>)  =
     let [(_, army1); (_, army2)] = Map.toList armies
 
-    if army1.Groups.Count = 0 then army2 else
-    if army2.Groups.Count = 0 then army1 else
+    if army1.Groups.Count = 0 then Victory army2 else
+    if army2.Groups.Count = 0 then Victory army1 else
 
     let pairings = 
         (selectTargets army1 army2) @ (selectTargets army2 army1)
-        |> List.sortByDescending (fun (attk, _) -> attk.Initiative)
-        |> List.map (fun (attk, dfnd) -> (attk.Army,attk.Id), (dfnd.Army,dfnd.Id))
-    let armies = 
+        |> List.sortByDescending (fun (atk, _) -> atk.Initiative)
+        |> List.map (fun (atk, def) -> 
+            (atk.Army, atk.Id), (def.Army, def.Id))
+    let veteranArmies = 
         (armies, pairings)
         ||> List.fold (groupFight)
-    fight armies
-
-let Part1 (input : string) =  // "result1" (*
-    let armies = parse input
-    let army = fight armies
-    army.Groups
-    |> Map.toSeq
-    |> Seq.map snd
-    |> Seq.map (fun grp -> grp.Count)
-    |> Seq.sum
-
-
-//*)
-
-
-(* ================ Part B ================ *)
-let immune = "Immune System"
+    if armies = veteranArmies 
+        then Stalemate
+        else fight veteranArmies
 
 let unitCount army = 
     army.Groups
     |> Map.toSeq
-    |> Seq.map snd
-    |> Seq.map (fun grp -> grp.Count)
-    |> Seq.sum 
+    |> Seq.sumBy (fun (_, grp) -> grp.Count)
 
-let boostImmune (armies : Armies) boost =
+let Part1 (input : string) =
+    let armies = parse input
+    let (Victory army) = fight armies
+    unitCount army
+
+(* ================ Part B ================ *)
+
+let immune = "Immune System"
+
+let boostImmune boost (armies : Armies) =
     let army = armies.[immune]
     let groups  =
         army.Groups
         |> Map.toList
-        |> List.map snd
-        |> List.map (fun grp -> {grp with AD = grp.AD + boost})
-        |> List.map (fun grp -> grp.Id, grp)
+        |> List.map 
+            (fun (id, grp) -> id, {grp with AD = grp.AD + boost})
         |> Map
     armies.Add (immune, {army with Groups = groups})
 
-let Part2 result1 (input : string) = // "result2" (*
-    let boost, army = 
-        [43]
-        |> Seq.pick (fun boost ->
-            let armies = boostImmune (parse input) boost
-            let army = fight armies     
-            if army.Name = immune 
-                then Some (boost, army)
-                else None)
-    printfn "boost: %i" boost
-    unitCount army
-//*)
+let Part2 result1 (input : string) = 
+    let armies = parse input
+    let rec boostToVictory boost =  
+        let armies = boostImmune boost armies 
+        match fight armies with
+        | Victory army when army.Name = immune -> unitCount army
+        | _ -> boostToVictory (boost + 1)
+    boostToVictory 1
